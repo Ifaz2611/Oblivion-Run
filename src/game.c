@@ -1,4 +1,6 @@
     #include <math.h>
+    #include <string.h>
+    #include <ctype.h>
     #include "game.h"
     #include "texture.h"
     #include "animation.h"
@@ -227,9 +229,64 @@
         }
     }
 
+    void updateCheatCode(GS* gs){
+        // hidden cheat: type "godmode" (or "oblivion" / "ididdqd") anytime while
+        // running to toggle infinite health. Buffer keeps the last letters typed.
+        int k = GetCharPressed();
+        while(k > 0){
+            char c = (char)k;
+            if(c >= 'A' && c <= 'Z') c = (char)(c + ('a' - 'A'));
+            if(c >= 'a' && c <= 'z'){
+                if(gs->cheatLen < (int)sizeof(gs->cheatBuf) - 1){
+                    gs->cheatBuf[gs->cheatLen++] = c;
+                }else{
+                    memmove(gs->cheatBuf, gs->cheatBuf + 1, sizeof(gs->cheatBuf) - 2);
+                    gs->cheatBuf[sizeof(gs->cheatBuf) - 2] = c;
+                }
+                gs->cheatBuf[gs->cheatLen] = '\0';
+                const char* codes[] = {"godmode", "oblivion", "ididdqd"};
+                for(int ci = 0; ci < 3; ci++){
+                    size_t cl = strlen(codes[ci]);
+                    if((size_t)gs->cheatLen >= cl &&
+                       strcmp(gs->cheatBuf + gs->cheatLen - cl, codes[ci]) == 0){
+                        gs->godmode = !gs->godmode;
+                        gs->cheatLen = 0;
+                        gs->cheatBuf[0] = '\0';
+                        if(gs->godmode){
+                            gs->player.health = gs->player.maxHealth;
+                            PlaySound(gs->audio.health_pickup);
+                        }else{
+                            PlaySound(gs->audio.menu_click);
+                        }
+                        for(int t = 0; t < 10; t++){
+                            if(!gs->floatTexts[t].active){
+                                gs->floatTexts[t].active = true;
+                                gs->floatTexts[t].position = (Vector2){gs->player.position.x, gs->player.position.y - 60.0f};
+                                gs->floatTexts[t].timer = 2.0f;
+                                gs->floatTexts[t].maxTime = 2.0f;
+                                const char* msg = gs->godmode ? "GOD MODE ON" : "GOD MODE OFF";
+                                strncpy(gs->floatTexts[t].text, msg, sizeof(gs->floatTexts[t].text) - 1);
+                                gs->floatTexts[t].text[sizeof(gs->floatTexts[t].text) - 1] = '\0';
+                                gs->floatTexts[t].color = gs->godmode ? GOLD : LIGHTGRAY;
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+            k = GetCharPressed();
+        }
+        if(gs->godmode && !gs->player.isDead){
+            gs->player.health = gs->player.maxHealth;
+        }
+    }
+
     void updateGameplay(GS* gs,anim* anim,float dt){
         ShowCursor();
         SetMouseCursor(MOUSE_CURSOR_CROSSHAIR);
+        updateTouchButtons(gs);
+        updateCheatCode(gs);
         Rectangle pr = getPlayerRect(gs);
         gs->player.prevBottom = pr.y + pr.height;
         player_has_fallen(gs);
@@ -345,6 +402,16 @@ void restartGame(GS* gs) {
     
     gs->starting_timer = STARTING_TIMER;   // otherwise the intro run only happens on the first game
     gs->current_player_state = idle_player;
+    // death anim must be reset or the next death skips its finish-wait in isGameover()
+    gs->player_animations[player_die].currentframe = 0;
+    gs->player_animations[player_die].frametimer = 0.0f;
+    gs->player_animations[player_die].isfinished = false;
+    gs->timer = 0.0f;
+    // godmode persists across retries (toggle off by retyping the code);
+    // clear the letter buffer + stale touch state so nothing carries over
+    gs->cheatLen = 0;
+    gs->cheatBuf[0] = '\0';
+    for(int i = 0; i < TB_COUNT; i++) gs->touchHeld[i] = gs->touchPrevHeld[i] = false;
     gs->player.invultimer = 0; gs->player.dashcooldowntimer = 0; gs->player.dashduration = 0;
     gs->player.hitduration = 0; gs->player.hashitthiswing = false;
     gs->spike_cooldown = 0; gs->pgas.attacktimer = 0;
@@ -389,9 +456,17 @@ void updateGame(GS* gs, anim* anim, float dt){
 static void activateMenuSelection(GS* gs) {
     PlaySound(gs->audio.menu_click);
     if (gs->menu_selection == 0) {
-        gs->currentscreen = NAME_ENTRY; // name page
-        gs->nameLetterCount = 0;        // name reset kora
-        gs->playerName[0] = '\0';
+        if (gs->playerName[0] != '\0') {
+            // name already known -> skip retyping, jump straight back into the run
+            restartGame(gs);
+            StopMusicStream(gs->audio.menuMusic);
+            PlayMusicStream(gs->audio.gameMusic);
+            gs->currentscreen = gs->show_tutorial ? TUTORIAL : GAME;
+        } else {
+            gs->currentscreen = NAME_ENTRY; // name page
+            gs->nameLetterCount = 0;        // name reset kora
+            gs->playerName[0] = '\0';
+        }
     }
     else if (gs->menu_selection == 1) {
         gs->pressed_how_to_play = true;
@@ -576,8 +651,16 @@ void updateNameEntry(GS* gs) {
         gs->playerName[gs->nameLetterCount] = '\0';
     }
 
-    // ENTER chaple game start at least 1 ta letter likhtei hobe 
-    if (IsKeyPressed(KEY_ENTER) && gs->nameLetterCount > 0) {
+    // ESC chaple menu te ferot (nam na likhei ber হওয়া jabe)
+    if (IsKeyPressed(KEY_ESCAPE)) {
+        gs->currentscreen = MENU;
+        gs->menu_selection = 0;
+        updateParallax(gs, 5.0f);
+        return;
+    }
+
+    // ENTER chaple game start at least 1 ta letter likhtei hobe
+    if ((IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER)) && gs->nameLetterCount > 0) {
         PlaySound(gs->audio.menu_click); 
         restartGame(gs);
         StopMusicStream(gs->audio.menuMusic);
@@ -717,10 +800,20 @@ void drawScoreHUD(const GS* gs) {
 
 
 void updateGameover(GS* gs){
-    
-    if (IsKeyPressed(KEY_ENTER)) {
+    // ENTER / R = instant retry with the same hero name (no menu, no retyping).
+    // ESC / BACKSPACE / M = back to menu.
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_R)) {
+        PlaySound(gs->audio.menu_click);
+        restartGame(gs);
+        StopMusicStream(gs->audio.menuMusic);
+        StopMusicStream(gs->audio.gameMusic);
+        PlayMusicStream(gs->audio.gameMusic);
+        gs->currentscreen = GAME;
+        return;
+    }
+    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_M)) {
         gs->currentscreen = MENU;
-        gs->menu_selection = 0; 
+        gs->menu_selection = 0;
         StopMusicStream(gs->audio.gameMusic);
         PlayMusicStream(gs->audio.menuMusic);
     }
@@ -758,7 +851,7 @@ void drawGameover(GS* gs){
 
     drawGameOverScores(gs, gs->isNewHighScore);
 
-  const char* instruction = "Press ENTER to return to Menu";
+  const char* instruction = "ENTER/R: Retry   |   ESC: Menu (name is saved)";
     Vector2 instSize = MeasureTextEx(gs->cfonts.menu_font3, instruction, 30, 0);
     
   

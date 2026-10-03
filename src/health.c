@@ -7,6 +7,7 @@
 
 void updateHealth(GS* gs, float  dt){
     (void)dt;
+    if(gs->godmode && !gs->player.isDead) gs->player.health = gs->player.maxHealth;
     if(gs->player.isDead) return;
     // gs->player.health -= HEALTH_DECAY_RATE * dt;
     if(gs->player.health <= 0.0f){
@@ -46,13 +47,17 @@ void drawHealthUI(GS* gs){
     DrawRectangleRoundedLines((Rectangle){posX, barY, barWidth, barHeight}, 0.5f, 10, LIGHTGRAY);
 
     const char* hpText = TextFormat("HP: %d / %d", (int)gs->player.health, (int)gs->player.maxHealth);
-    
+
     DrawTextEx(gs->cfonts.menu_font3,hpText, (Vector2){posX + 5, barY + barHeight + 8}, 30, 0,RAYWHITE);
+    if(gs->godmode){
+        DrawTextEx(gs->cfonts.menu_font3, "GOD MODE", (Vector2){posX + 5, barY + barHeight + 44}, 30, 0, GOLD);
+    }
 }
 
 
 void damagePlayer(GS* gs,float amount){
     Player* p = &gs->player;
+    if(gs->godmode) return; // hidden cheat: infinite health, no damage taken
     if(p->isDead || p->invultimer>0) return;
     p->health-=amount;
     spawn_health_update(gs,-amount);

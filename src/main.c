@@ -10,6 +10,7 @@
 #include "sound.h"
 #include"score.h"
 #include"tutorial.h"
+#include"player.h"
 int main(){
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
     InitWindow(1920,1080,"OBLIVION RUN");
@@ -52,9 +53,10 @@ int main(){
             BeginMode2D(gs.camera); 
             drawGame(&gs, &tex);
             EndMode2D();
-            drawHealthUI(&gs); 
+            drawHealthUI(&gs);
             drawScoreHUD(&gs);
             drawDifficultyMeter(&gs);
+            drawTouchControls(&gs);
             }
         else if (gs.currentscreen == CREDITS) {
              drawCredits(&gs,&tex);

@@ -20,4 +20,9 @@ Rectangle getLeftCheckRec(GS* gs);
 Rectangle getRightCheckRec(GS* gs);
 void checkCeilingCollision(GS* gs);
 void checkWallCollision(GS* gs);
+// combined keyboard + on-screen button input
+void updateTouchButtons(GS* gs);
+Rectangle getTouchBtnRect(touchbtn b);
+bool isMouseOnAnyTouchBtn(void);
+void drawTouchControls(GS* gs);
 #endif

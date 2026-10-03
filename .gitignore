@@ -47,9 +47,11 @@ Desktop.ini
 *.pid
 ###################
 
+
 agent.md
 todo.md
 
 # Database / generated files
 *.sqlite
 *.db
+data/highscore.txt

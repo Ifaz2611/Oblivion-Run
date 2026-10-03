@@ -287,6 +287,16 @@ typedef struct animation{
         tut_fadeout
     } tutorialstate;
 
+    // on-screen touch / clickable buttons (also mirrors arrow-key input)
+    typedef enum touchbtn{
+        TB_LEFT = 0,
+        TB_RIGHT,
+        TB_JUMP,
+        TB_DASH,
+        TB_ATTACK,
+        TB_COUNT
+    } touchbtn;
+
     typedef struct gameState // main struct of this game, ekhane shob rokom game er element ache 
     {
         gamescreen currentscreen; // game menu te naki game er vitore ta bujhai
@@ -373,6 +383,15 @@ typedef struct animation{
         bool pressed_how_to_play;
         float skip_duration;
         float skip_pressed_timer;
+
+        // hidden cheat: infinite health
+        bool godmode;
+        char cheatBuf[32];
+        int cheatLen;
+
+        // on-screen buttons: held this frame vs previous frame (for edge detection)
+        bool touchHeld[TB_COUNT];
+        bool touchPrevHeld[TB_COUNT];
     }GS;
 
 

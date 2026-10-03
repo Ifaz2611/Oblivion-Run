@@ -31,5 +31,6 @@ void drawBombs(GS* gs, tex* textures);
 
 
 void restartGame(GS* gs);
+void updateCheatCode(GS* gs);
 
 #endif 

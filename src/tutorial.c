@@ -17,10 +17,11 @@ static const char* tutorialPages[] = {
     "--------------------------------------------\n\n"
     "                   HOW TO PLAY\n\n"
     "                  -------------  \n\n"
-    "A / D  -  Move\n\n"
-    "SPACE  -  Jump\n\n"
-    "LEFT SHIFT  -  Dash ***(really useful!!)***\n\n"
-    "LEFT CLICK  -  Attack\n\n",
+    "A / D or ARROW KEYS  -  Move\n\n"
+    "SPACE or UP ARROW  -  Jump\n\n"
+    "LEFT / RIGHT SHIFT  -  Dash ***(really useful!!)***\n\n"
+    "LEFT CLICK or DOWN ARROW / X  -  Attack\n\n"
+    "On-screen buttons (< > ^ DSH ATK) work too!\n\n",
     "                     OBSTACLES\n\n"
     "                    -----------\n\n"
     "SPIKES - Touching it causes damage\n\n\n\n\n\n\n\n\n"
