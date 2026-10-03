@@ -1,0 +1,51 @@
+# Build and compiled artifacts
+*.exe
+*.out
+*.o
+*.obj
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.exp
+*.ilk
+*.pdb
+*.idb
+*.iobj
+*.ipdb
+build/
+bin/
+dist/
+obj/
+debug/
+release/
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+*.temp
+*~
+*.user
+*.suo
+*.ncb
+*.opendb
+
+# Local environment and OS clutter
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.log
+*.cache
+*.bak
+*.orig
+*.rej
+*.local
+*.pid
+
+# Database / generated files
+*.sqlite
+*.db
