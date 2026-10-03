@@ -45,6 +45,9 @@ Desktop.ini
 *.rej
 *.local
 *.pid
+###################
+
+agent.md
 
 # Database / generated files
 *.sqlite
