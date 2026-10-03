@@ -642,7 +642,7 @@ static void beginRunAfterDifficulty(GS* gs) {
     }
     restartGame(gs);
     StopMusicStream(gs->audio.menuMusic);
-    PlayMusicStream(gs->audio.gameMusic);
+    // no background music during the run — SFX only
     if (gs->show_tutorial) {
         initTutorial(gs);
         gs->currentscreen = TUTORIAL;
@@ -807,7 +807,7 @@ void updateNameEntry(GS* gs) {
         PlaySound(gs->audio.menu_click); 
         restartGame(gs);
         StopMusicStream(gs->audio.menuMusic);
-        PlayMusicStream(gs->audio.gameMusic);
+        // no background music during the run — SFX only
         if (gs->show_tutorial) {
             initTutorial(gs);
             gs->currentscreen = TUTORIAL;
@@ -890,7 +890,6 @@ void isGameover(GS* gs, float dt){
     if(gs->player.isDead && gs->currentscreen != GAMEOVER && gs->player_animations[gs->current_player_anim_name].isfinished){
         gs->timer += dt;
         if(gs->timer >= 1.0f) {
-            StopMusicStream(gs->audio.gameMusic);
             PlayMusicStream(gs->audio.menuMusic);
             gs->currentscreen = GAMEOVER; 
             gs->isNewHighScore = tryAddHighScore(gs->highScores, gs->playerName, gs->score);
@@ -963,15 +962,12 @@ void updateGameover(GS* gs){
         PlaySound(gs->audio.menu_click);
         restartGame(gs);
         StopMusicStream(gs->audio.menuMusic);
-        StopMusicStream(gs->audio.gameMusic);
-        PlayMusicStream(gs->audio.gameMusic);
         gs->currentscreen = GAME;
         return;
     }
     if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_M)) {
         gs->currentscreen = MENU;
         gs->menu_selection = 0;
-        StopMusicStream(gs->audio.gameMusic);
         PlayMusicStream(gs->audio.menuMusic);
     }
     updateParallax(gs, 1.5f);

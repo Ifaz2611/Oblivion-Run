@@ -1,45 +1,50 @@
-#include"sound.h"
-#include<math.h>
+#include "sound.h"
+#include <math.h>
+
+#define footstep_interval 0.35f   // seconds between footstep sounds
+
 void load_audio(GS* gs){
     gs->audio.menuMusic = LoadMusicStream("assets/music/menu_background_music.mp3");
     gs->audio.menuMusic.looping = true;
     gs->audio.gameMusic = LoadMusicStream("assets/music/game_music1.wav");
     gs->audio.gameMusic.looping = true;
-    SetMusicVolume(gs->audio.gameMusic,.4f);
-    SetMusicPitch(gs->audio.gameMusic,.6f);
+    SetMusicVolume(gs->audio.gameMusic, .3f);
+    SetMusicPitch(gs->audio.gameMusic, 1.0f);
+
     gs->audio.hurt = LoadSound("assets/music/hurt.mp3");
     gs->audio.die = LoadSound("assets/music/die.mp3");
-    SetSoundPitch(gs->audio.die,1.2f);
+    SetSoundPitch(gs->audio.die, 1.2f);
     gs->audio.enemyDie = LoadSound("assets/music/enemy_die.mp3");
     gs->audio.hit = LoadSound("assets/music/enemy_hurt.mp3");
     gs->audio.gameOverSting = LoadSound("assets/music/game_over_sound.mp3");
     gs->audio.player_run = LoadSound("assets/music/running.mp3");
-    SetSoundVolume(gs->audio.player_run,.5f);
+    SetSoundVolume(gs->audio.player_run, .5f);
 
     gs->audio.swing = LoadSound("assets/music/player_swing.mp3");
     gs->audio.enemy_swing = LoadSound("assets/music/enemy_swing.mp3");
     gs->audio.dash = LoadSound("assets/music/dash.mp3");
     gs->audio.jump = LoadSound("assets/music/jump.mp3");
-    SetSoundPitch(gs->audio.jump,1.2f);
-
+    SetSoundPitch(gs->audio.jump, 1.2f);
     gs->audio.landing = LoadSound("assets/music/landing.mp3");
-
     gs->audio.enemy_run = LoadSound("assets/music/enemy_run.mp3");
     gs->audio.health_pickup = LoadSound("assets/music/health_pickup.mp3");
     gs->audio.explosion = LoadSound("assets/music/explosion.mp3");
     gs->audio.menu_click = LoadSound("assets/music/menu_click.mp3");
     gs->audio.menu_select = LoadSound("assets/music/menu_select.mp3");
     gs->audio.typing = LoadSound("assets/music/typing.mp3");
-    
+
+    // --- FIX: initialize footstep timers ---
+    gs->audio.footstepTimer = footstep_interval;   // ready to play first step immediately
+    for (int i = 0; i < max_enemy_num; i++) {
+        gs->audio.enemyFootstepTimer[i] = 0.0f;
+    }
 }
+
 void updateMusic(GS* gs){
-    UpdateMusicStream(gs->audio.menuMusic);
-    UpdateMusicStream(gs->audio.gameMusic);
+    // Only update streams that are actually playing to avoid any weird overlap
+    if (IsMusicStreamPlaying(gs->audio.menuMusic)) UpdateMusicStream(gs->audio.menuMusic);
+    if (IsMusicStreamPlaying(gs->audio.gameMusic)) UpdateMusicStream(gs->audio.gameMusic);
 }
-
-
-#define footstep_interval 0.35f   // seconds between footstep sounds while running
-
 
 void unloadAudio(GS* gs){
     UnloadMusicStream(gs->audio.menuMusic);
@@ -68,31 +73,31 @@ void unloadAudio(GS* gs){
 void playerFootstepUpdate(GS* gs, float dt){
     Player* p = &gs->player;
     bool isRunning = p->isgrounded && !p->isDead && !p->isdashing
-                      && fabsf(p->velocity.x) > 10.0f;   // same threshold setplayerstate uses for "running"
+                     && fabsf(p->velocity.x) > 10.0f;
 
-    if(!isRunning){
-        gs->audio.footstepTimer = footstep_interval;   // primes the next step to fire instantly
+    if (!isRunning) {
+        gs->audio.footstepTimer = footstep_interval;   // prime next step
         return;
     }
 
     gs->audio.footstepTimer += dt;
-    if(gs->audio.footstepTimer >= footstep_interval){
-        gs->audio.footstepTimer -= footstep_interval;
+    if (gs->audio.footstepTimer >= footstep_interval) {
+        gs->audio.footstepTimer = 0.0f;   // reset instead of subtract (avoids multiple plays per frame)
         PlaySound(gs->audio.player_run);
     }
 }
 
 // enemies: same idea, per-enemy timer since several can walk at once
 void enemyFootstepUpdate(GS* gs, float dt){
-    for(int i=0;i<max_enemy_num;i++){
+    for (int i = 0; i < max_enemy_num; i++) {
         Enemy* e = &gs->enemy[i];
-        if(!e->isactive || e->state != walking_enemy){
+        if (!e->isactive || e->state != walking_enemy) {
             gs->audio.enemyFootstepTimer[i] = 0.0f;
             continue;
         }
         gs->audio.enemyFootstepTimer[i] += dt;
-        if(gs->audio.enemyFootstepTimer[i] >= footstep_interval){
-            gs->audio.enemyFootstepTimer[i] -= footstep_interval;
+        if (gs->audio.enemyFootstepTimer[i] >= footstep_interval) {
+            gs->audio.enemyFootstepTimer[i] = 0.0f;   // reset
             PlaySound(gs->audio.enemy_run);
         }
     }
