@@ -5,20 +5,36 @@
 #include"ground.h"
 
 void loadHighScores(HighScoreEntry highScores[MAX_HIGH_SCORES]) {
+    for (int i = 0; i < MAX_HIGH_SCORES; i++) {
+        highScores[i].name[0] = '\0';
+        highScores[i].score = 0;
+    }
     FILE* f = fopen(HIGHSCORE_FILE, "r");
     if (!f) {
-        for (int i = 0; i < MAX_HIGH_SCORES; i++) {
-            highScores[i].name[0] = '\0';
-            highScores[i].score = 0;
-        }
         return;
     }
+    char line[128];
     for (int i = 0; i < MAX_HIGH_SCORES; i++) {
-        // "%15s" width must stay one less than MAX_NAME_LEN, to leave room for '\0'
-        if (fscanf(f, "%15s %d", highScores[i].name, &highScores[i].score) != 2) {
-            highScores[i].name[0] = '\0';
-            highScores[i].score = 0;
+        if (!fgets(line, sizeof(line), f)) {
+            break; // remaining slots keep the zero defaults above
         }
+        line[strcspn(line, "\r\n")] = '\0';
+        // Split on the LAST space so hero names may contain spaces.
+        char* lastSpace = strrchr(line, ' ');
+        if (!lastSpace || lastSpace == line) {
+            continue;
+        }
+        *lastSpace = '\0';
+        int sc = 0;
+        if (sscanf(lastSpace + 1, "%d", &sc) != 1) {
+            continue;
+        }
+        if (strcmp(line, "---") == 0) {
+            line[0] = '\0'; // placeholder written for empty slots
+        }
+        strncpy(highScores[i].name, line, MAX_NAME_LEN - 1);
+        highScores[i].name[MAX_NAME_LEN - 1] = '\0';
+        highScores[i].score = sc;
     }
     fclose(f);
 }
@@ -27,7 +43,8 @@ void saveHighScores(const HighScoreEntry highScores[MAX_HIGH_SCORES]) {
     FILE* f = fopen(HIGHSCORE_FILE, "w");
     if (!f) return;
     for (int i = 0; i < MAX_HIGH_SCORES; i++) {
-        fprintf(f, "%s %d\n", highScores[i].name, highScores[i].score);
+        const char* name = highScores[i].name[0] ? highScores[i].name : "---";
+        fprintf(f, "%s %d\n", name, highScores[i].score);
     }
     fclose(f);
 }

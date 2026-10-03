@@ -2,8 +2,6 @@
 #include<math.h>
 
 void drawBackground(GS* gs){
-    float groundTop = ground_y;
-
     for(int i=0;i<BG_LAYER_COUNT;i++){
         parallax_layer *l = &gs->bgLayers[i];
         float texWidth  = (i==BG_LAYER_COUNT-1)?l->tex.width: l->tex.width  * BG_SCALE;

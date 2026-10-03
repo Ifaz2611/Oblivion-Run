@@ -66,7 +66,7 @@ int main(){
 
         EndDrawing();       
     }
-    unloadTexture(&tex);
+    unloadTexture(&tex, &gs);
     unloadenemy(&gs);
     unloadAudio(&gs);
     CloseAudioDevice();

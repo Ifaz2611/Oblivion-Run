@@ -6,6 +6,7 @@
 #include<math.h>
 
 void updateHealth(GS* gs, float  dt){
+    (void)dt;
     if(gs->player.isDead) return;
     // gs->player.health -= HEALTH_DECAY_RATE * dt;
     if(gs->player.health <= 0.0f){
@@ -44,7 +45,6 @@ void drawHealthUI(GS* gs){
 
     DrawRectangleRoundedLines((Rectangle){posX, barY, barWidth, barHeight}, 0.5f, 10, LIGHTGRAY);
 
-    int displayPercentage = (int)(healthPercentage * 100);
     const char* hpText = TextFormat("HP: %d / %d", (int)gs->player.health, (int)gs->player.maxHealth);
     
     DrawTextEx(gs->cfonts.menu_font3,hpText, (Vector2){posX + 5, barY + barHeight + 8}, 30, 0,RAYWHITE);
@@ -65,6 +65,10 @@ void damagePlayer(GS* gs,float amount){
     }
     else {
         gs->current_player_anim_name = player_hurt;
+        anim* hurtAnim = &gs->player_animations[player_hurt];
+        hurtAnim->currentframe = 0;
+        hurtAnim->frametimer = 0.0f;
+        hurtAnim->isfinished = false;
         p->velocity.x = 0;
          PlaySound(gs->audio.hurt);
     }

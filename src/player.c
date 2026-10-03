@@ -81,7 +81,7 @@ void playerDashUpdate(GS* gs,float dt){
     if(gs->current_player_state>dashing_player) return;
     Player* a = &gs->player;
 
-    if(a->dashcooldowntimer>=0) a->dashcooldowntimer-=dt;
+    if(a->dashcooldowntimer>0) a->dashcooldowntimer-=dt;
 
     if(IsKeyPressed(KEY_LEFT_SHIFT) && !a->isdashing && a->dashcooldowntimer<=0 && a->isgrounded){
         a->isdashing = true;
@@ -91,7 +91,7 @@ void playerDashUpdate(GS* gs,float dt){
         a->velocity.x = (a->facing_left)? -dash_speed : dash_speed;
         a->velocity.y = -350.0f;
     }
-    if(a->dashduration>=0){
+    if(a->isdashing && a->dashduration>=0){
         a->dashduration-=dt;
         
         if(a->dashduration<=0){
@@ -112,7 +112,7 @@ void hitting(GS* gs,float dt){
     if(gs->current_player_state>attacking_player) return;
 
     Player* p = &gs->player;
-    anim* a = &gs->player_animations[gs->current_player_anim_name];
+    (void)dt;
     if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !p->isattacking && !p->isdashing && p->isgrounded){
         p->isattacking = true;
         PlaySound(gs->audio.swing);
@@ -145,6 +145,7 @@ void Gravity(GS* gs,float dt){
     gs->player.velocity.y += gravity*dt;
 }
 void playerMovement(GS* gs,anim* anim,float dt){
+    (void)anim;
 
     if(gs->starting_timer!=0){
         gs->player.velocity.x = 1000.0f;

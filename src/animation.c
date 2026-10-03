@@ -30,11 +30,11 @@ void loadAnimation(GS* gs,tex* tex){
     gs->player_animations[player_jump].isfinished = false;
 
     gs->player_animations[player_dash].tex = tex->dash;
-    gs->player_animations[player_dash].framecount = 4;
+    gs->player_animations[player_dash].framecount = 6;
     gs->player_animations[player_dash].frameduration = 0.08f;
     gs->player_animations[player_dash].timedependent=true;
     gs->player_animations[player_dash].frameHeight=  gs->player_animations[player_dash].tex.height;
-    gs->player_animations[player_dash].frameWidth=  gs->player_animations[player_dash].tex.width/6;
+    gs->player_animations[player_dash].frameWidth=  gs->player_animations[player_dash].tex.width/gs->player_animations[player_dash].framecount;
     gs->player_animations[player_dash].looping = false;
     gs->player_animations[player_dash].isfinished = false;
 
@@ -44,7 +44,7 @@ void loadAnimation(GS* gs,tex* tex){
     attack_ani->frameduration = .06f;
     attack_ani->frameHeight = attack_ani->tex.height;
     attack_ani->frameWidth = attack_ani->tex.width/14;
-    attack_ani->looping = true;
+    attack_ani->looping = false;
     attack_ani->timedependent = true;
     attack_ani->isfinished = false;
 
@@ -54,7 +54,7 @@ void loadAnimation(GS* gs,tex* tex){
     air_attack_ani->frameduration = .08f;
     air_attack_ani->frameHeight = air_attack_ani->tex.height;
     air_attack_ani->frameWidth = air_attack_ani->tex.width/air_attack_ani->framecount;
-    air_attack_ani->looping = true;
+    air_attack_ani->looping = false;
     air_attack_ani->timedependent = true;
     air_attack_ani->isfinished = false;
 

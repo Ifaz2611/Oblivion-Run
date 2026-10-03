@@ -109,8 +109,8 @@
 
         float d = gs->distance_traveled;
         float alpha = 1.0f;
-        if(d < 4300)      alpha = (d - 4000.0f) / 300.0f;   // fade in
-        else if(d > 6700) alpha = (7000.0f - d) / 300.0f;   // fade out
+        if(d < 40300)      alpha = (d - 40000.0f) / 300.0f;   // fade in
+        else if(d > 40700) alpha = (41000.0f - d) / 300.0f;   // fade out
 
         DrawTextEx(gs->cfonts.menu_font3, hint, (Vector2){x, 100}, 60, 0, Fade(LIGHTGRAY, alpha));
         }
@@ -118,6 +118,7 @@
     }
 
     void initGame(GS* gs,tex* tex,anim* anim){
+        (void)anim;
 
         SetMouseCursor(MOUSE_CURSOR_CROSSHAIR);
 
@@ -687,8 +688,10 @@ void isGameover(GS* gs, float dt){
 // }
 
 void player_has_fallen(GS* gs){
+    if(gs->player.isDead) return;
     if(getPlayerRect(gs).y>=ground_y+gs->player.height/2.0f){
         PlaySound(gs->audio.die);
+        gs->player.health = 0.0f;
         gs->player.isDead = true;
     }
 }
@@ -701,14 +704,14 @@ void updatescore(GS* gs){
 void drawScoreHUD(const GS* gs) {
     const char* scoreText = TextFormat("SCORE: %06d", gs->score);
 
-    Vector2 textSize = MeasureTextEx(gs->cfonts.menu_font2, scoreText, 40, 0);
+    Vector2 textSize = MeasureTextEx(gs->cfonts.menu_font3, scoreText, 40, 0);
     
     float scoreX = s_width/2.0f-textSize.x/2.0f+200.0f; 
     float scoreY = 30.0f; 
 
 
     DrawTextEx(gs->cfonts.menu_font3, scoreText, (Vector2){scoreX + 3, scoreY + 3}, 40, 0, Fade(BLACK, 0.6f));
-    DrawTextEx(gs->cfonts.menu_font3, scoreText, (Vector2){scoreX, scoreY}, 60, 0, WHITE);
+    DrawTextEx(gs->cfonts.menu_font3, scoreText, (Vector2){scoreX, scoreY}, 40, 0, WHITE);
 }
 
 

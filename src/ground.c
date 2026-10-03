@@ -46,6 +46,7 @@
     }
     void pushgroundchunk(GS *gs,float x,float y,float height,float width,bool has_health_item)
     {
+        (void)has_health_item; // health items are attached via spawn_healthrect into their own slots
         int index = gs->chunk_index;
 
         gs->gchunk[index].groundChunkRect =
@@ -56,14 +57,22 @@
                 .height = height
             };
 
-            
-            
+        // Clear stale pickup state from this ring slot so old health items
+        // can't haunt newly spawned ground.
+        gs->gchunk[index].hasHealthItem = false;
+        gs->gchunk[index].healthItemCollected = false;
+        gs->gchunk[index].healthItemRect = (Rectangle){0,0,0,0};
+
+
         gs->chunk_index = (gs->chunk_index + 1) % MaxChunkNum;
     }
 
     void spawn_healthrect(GS* gs,float x,float y,float width){
+        // Claim a dedicated ring slot (no ground rect) so this pickup can
+        // never be overwritten by — or leak onto — an unrelated ground chunk.
         int index = gs->chunk_index;
-        
+
+        gs->gchunk[index].groundChunkRect = (Rectangle){0,0,0,0};
         gs->gchunk[index].hasHealthItem = true;
 
         gs->gchunk[index].healthItemCollected = false;
@@ -74,6 +83,8 @@
             .width = 50.0f,
             .height = 50.0f
         };
+
+        gs->chunk_index = (gs->chunk_index + 1) % MaxChunkNum;
     }
 
 
@@ -135,7 +146,7 @@
                 
                 if (GetRandomValue(1, 100) <= 10) { 
                     
-                    float bombX = gs->next_spawn_point + (float)GetRandomValue(0, s_width - bomb_width);
+                    float bombX = gs->next_spawn_point + (float)GetRandomValue(0, (int)(platform_width - bomb_width));
                     float bombY = ground_y - bomb_height;
                     addbomb(gs, bombX, bombY, bomb_width, bomb_height);
                 }

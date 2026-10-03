@@ -47,9 +47,10 @@ static const char* tutorialPages[] = {
 
    "                ****TIPS******\n\n"
    "                --------------\n\n\n\n"
-   "         USE DASH (LEFT SHIFT BUTTON)\n\n"
-   "     WHEN THE GAP IS TOO BIG TO JUMP OVER",
-   "                ****TIPS******\n\n"
+    "         USE DASH (LEFT SHIFT BUTTON)\n\n"
+    "     WHEN THE GAP IS TOO BIG TO JUMP OVER\n\n",
+
+    "                ****TIPS******\n\n"
    "                --------------\n\n\n\n"
    "       STAY CALM, STAY FAST, STAY ALIVE\n\n"
    "      ONE WRONG JUMP ENDS THE RUN — FOCUS",
@@ -228,13 +229,10 @@ void drawTutorial(GS* gs,tex* tex){
     if(gs->tutorial_page==5){
         float player_posx = s_width/2.0f-250.0f;
         float player_posy = s_height/2.0f+200.0f;
-        // FIXME: src.x = 5*width3 with width3 = tex.width reads OUTSIDE the texture.
-        // Likely intended as frame 5 of an N-frame strip (width3 = tex.width / N).
-        // See AGENT.md §5 — not fixing without confirming the sheet frame count.
         float width3 = tex->enemy_health_drop.width;
         float height3  = tex->enemy_health_drop.height;
         if(gs->tutorial_state == tut_waiting) DrawTexturePro(
-            tex->enemy_health_drop,(Rectangle){.x = 5*width3,.y=0,.height = height3, .width = width3}, 
+            tex->enemy_health_drop,(Rectangle){.x = 0,.y=0,.height = height3, .width = width3}, 
             (Rectangle){.x = player_posx+120,.y = player_posy-240.0f,.width = width3, .height = height3},
             (Vector2){0,0},0,WHITE
         );
@@ -242,11 +240,10 @@ void drawTutorial(GS* gs,tex* tex){
     if(gs->tutorial_page==6){
         float player_posx = s_width/2.0f-250.0f;
         float player_posy = s_height/2.0f+200.0f;
-        // FIXME: same src-rect issue as page 5.
         float width3 = tex->pgas.width;
         float height3  = tex->pgas.height;
         if(gs->tutorial_state == tut_waiting) DrawTexturePro(
-            tex->pgas,(Rectangle){.x = 5*width3,.y=0,.height = height3, .width = width3}, 
+            tex->pgas,(Rectangle){.x = 0,.y=0,.height = height3, .width = width3}, 
             (Rectangle){.x = player_posx-60,.y = player_posy-260.0f,.width = width3/2.0f, .height = height3/2.0f},
             (Vector2){0,0},0,WHITE
         );
@@ -254,11 +251,10 @@ void drawTutorial(GS* gs,tex* tex){
      if(gs->tutorial_page==7){
         float player_posx = s_width/2.0f-250.0f;
         float player_posy = s_height/2.0f+200.0f;
-        // FIXME: same src-rect issue as page 5.
         float width3 = tex->Large_gap.width;
         float height3  = tex->Large_gap.height;
         if(gs->tutorial_state == tut_waiting) DrawTexturePro(
-            tex->Large_gap,(Rectangle){.x = 5*width3,.y=0,.height = height3, .width = width3}, 
+            tex->Large_gap,(Rectangle){.x = 0,.y=0,.height = height3, .width = width3}, 
             (Rectangle){.x = player_posx-60,.y = player_posy-200.0f,.width = width3/2.0f, .height = height3/2.0f},
             (Vector2){0,0},0,WHITE
         );
@@ -266,11 +262,10 @@ void drawTutorial(GS* gs,tex* tex){
      if(gs->tutorial_page==8){
         float player_posx = s_width/2.0f-250.0f;
         float player_posy = s_height/2.0f+200.0f;
-        // FIXME: same src-rect issue as page 5.
         float width3 = tex->Large_gap2.width;
         float height3  = tex->Large_gap2.height;
         if(gs->tutorial_state == tut_waiting) DrawTexturePro(
-            tex->Large_gap2,(Rectangle){.x = 5*width3,.y=0,.height = height3, .width = width3}, 
+            tex->Large_gap2,(Rectangle){.x = 0,.y=0,.height = height3, .width = width3}, 
             (Rectangle){.x = player_posx-60,.y = player_posy-200.0f,.width = width3/2.0f, .height = height3/2.0f},
             (Vector2){0,0},0,WHITE
         );

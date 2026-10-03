@@ -7,8 +7,6 @@
 #include"ground.h"
 
 
-float timer=0.0f;
-
 Rectangle getEnemyRect(Enemy* enemy){    
     return (Rectangle) {.height = enemy->height, .width = enemy->width, .x=enemy->position.x, .y=enemy->position.y};
 }

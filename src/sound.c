@@ -47,8 +47,21 @@ void unloadAudio(GS* gs){
 
     UnloadSound(gs->audio.hurt);
     UnloadSound(gs->audio.die);
-    UnloadSound(gs->audio.enemy_run);
+    UnloadSound(gs->audio.enemyDie);
+    UnloadSound(gs->audio.hit);
+    UnloadSound(gs->audio.gameOverSting);
     UnloadSound(gs->audio.player_run);
+    UnloadSound(gs->audio.enemy_run);
+    UnloadSound(gs->audio.swing);
+    UnloadSound(gs->audio.enemy_swing);
+    UnloadSound(gs->audio.dash);
+    UnloadSound(gs->audio.jump);
+    UnloadSound(gs->audio.landing);
+    UnloadSound(gs->audio.health_pickup);
+    UnloadSound(gs->audio.explosion);
+    UnloadSound(gs->audio.menu_click);
+    UnloadSound(gs->audio.menu_select);
+    UnloadSound(gs->audio.typing);
 }
 
 // player: only step while actually running on the ground

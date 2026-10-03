@@ -77,23 +77,27 @@ void DamageFromBombs(GS* gs, float dt) {
         };
         bool playerInRange = Vector2Distance(playerCenter, bombCenter) <= bomb_explosion_range;
 
-        if (playerInRange) {
-            if (!b->armed) {
-                b->armed = true;
-                b->fuseTimer = bomb_fuse_time;
-            } else {
-                b->fuseTimer -= dt;
-            }
+        // Arm on proximity, but once armed the fuse keeps ticking even if the
+        // player escapes. Damage is range-checked at detonation time only.
+        if (playerInRange && !b->armed) {
+            b->armed = true;
+            b->fuseTimer = bomb_fuse_time;
+        }
+
+        if (b->armed) {
+            b->fuseTimer -= dt;
 
             if (b->fuseTimer <= 0.0f) {
                 b->isactive = false;
+                b->armed = false;
                 spawnExplosion(gs, bombCenter);
                 PlaySound(gs->audio.explosion);
-                damagePlayer(gs, bomb_damage);  
+                // Re-check range at the blast moment so escaping negates damage.
+                float distNow = Vector2Distance(playerCenter, bombCenter);
+                if (distNow <= bomb_explosion_range) {
+                    damagePlayer(gs, bomb_damage);
+                }
             }
-        } else {
-            b->armed = false;
-            b->fuseTimer = 0.0f;
         }
     }
 }

@@ -5,7 +5,7 @@
 
 void loadTexture(tex* tex, GS* gs);
 Texture2D LoadPixelTexture(const char *path);
-void unloadTexture(tex* tex);
+void unloadTexture(tex* tex, GS* gs);
 
 
 #endif

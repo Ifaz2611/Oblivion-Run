@@ -48,6 +48,7 @@ Desktop.ini
 ###################
 
 agent.md
+todo.md
 
 # Database / generated files
 *.sqlite
