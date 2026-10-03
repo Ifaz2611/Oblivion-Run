@@ -1,6 +1,7 @@
 #include "tutorial.h"
 #include "background.h"
 #include <string.h>
+#include <stdio.h>
 
 
 static const char* tutorialPages[] = {
@@ -62,6 +63,26 @@ static const char* tutorialPages[] = {
 };
 static const int tutorialPageCount = sizeof(tutorialPages)/sizeof(tutorialPages[0]);
 
+// Visible SKIP button (top-right). Shared by updateTutorial (click test)
+// and drawTutorial so the hitbox always matches what is drawn.
+static Rectangle tutorialSkipRect(void){
+    float w = 220.0f;
+    float h = 60.0f;
+    return (Rectangle){ (float)s_width - w - 30.0f, 30.0f, w, h };
+}
+
+static void skipTutorial(GS* gs){
+    PlaySound(gs->audio.menu_click);
+    gs->skip_pressed_timer = 0.0f;
+    if(gs->pressed_how_to_play){
+        gs->pressed_how_to_play = false;
+        gs->currentscreen = MENU;
+    } else {
+        gs->show_tutorial = false;
+        gs->currentscreen = GAME;
+    }
+}
+
 static void startPage(GS* gs, int page){
     gs->tutorial_page = page;
     gs->tutorial_charsShown = 0;
@@ -75,7 +96,21 @@ void initTutorial(GS* gs){
 }
 
 void updateTutorial(GS* gs, float dt){
+    ShowCursor();
+    SetMouseCursor(MOUSE_CURSOR_DEFAULT);
     int textLen = (int)strlen(tutorialPages[gs->tutorial_page]);
+
+    // ---- visible skip: click the SKIP button or press ESC for instant skip ----
+    Rectangle skipRect = tutorialSkipRect();
+    Vector2 mouse = GetMousePosition();
+    if(CheckCollisionPointRec(mouse, skipRect) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
+        skipTutorial(gs);
+        return;
+    }
+    if(IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_S)){
+        skipTutorial(gs);
+        return;
+    }
 
     if(!gs->pressed_how_to_play){
         if(IsKeyDown(KEY_ENTER)){
@@ -270,5 +305,44 @@ void drawTutorial(GS* gs,tex* tex){
             (Rectangle){.x = player_posx-60,.y = player_posy-200.0f,.width = width3/2.0f, .height = height3/2.0f},
             (Vector2){0,0},0,WHITE
         );
+    }
+
+    // ---- visible SKIP button (top-right) + page counter ----
+    {
+        Rectangle r = tutorialSkipRect();
+        Vector2 mouse = GetMousePosition();
+        bool hover = CheckCollisionPointRec(mouse, r);
+        Color bg = hover ? Fade(GOLD, 0.85f) : Fade(LIGHTGRAY, 0.55f);
+        Color border = hover ? GOLD : LIGHTGRAY;
+        DrawRectangleRounded(r, 0.25f, 8, bg);
+        DrawRectangleRoundedLines(r, 0.25f, 8, border);
+        const char* skipLabel = gs->pressed_how_to_play ? "BACK" : "SKIP >>";
+        Vector2 lsize = MeasureTextEx(gs->cfonts.menu_font3, skipLabel, 36, 0);
+        DrawTextEx(gs->cfonts.menu_font3, skipLabel,
+                   (Vector2){r.x + r.width/2.0f - lsize.x/2.0f, r.y + r.height/2.0f - lsize.y/2.0f},
+                   36, 0, BLACK);
+        // hold-ENTER progress bar under the button (pre-game flow only)
+        if(!gs->pressed_how_to_play && gs->skip_duration > 0.0f){
+            float frac = gs->skip_pressed_timer / gs->skip_duration;
+            if(frac < 0.0f) frac = 0.0f;
+            if(frac > 1.0f) frac = 1.0f;
+            Rectangle bar = {r.x, r.y + r.height + 8.0f, r.width, 12.0f};
+            DrawRectangleRounded(bar, 0.5f, 6, Fade(BLACK, 0.6f));
+            if(frac > 0.0f){
+                Rectangle fill = {bar.x, bar.y, bar.width * frac, bar.height};
+                DrawRectangleRounded(fill, 0.5f, 6, GOLD);
+            }
+            DrawRectangleRoundedLines(bar, 0.5f, 6, LIGHTGRAY);
+            const char* hint = "Hold ENTER to skip";
+            Vector2 hsize = MeasureTextEx(gs->cfonts.menu_font3, hint, 22, 0);
+            DrawTextEx(gs->cfonts.menu_font3, hint,
+                       (Vector2){r.x + r.width/2.0f - hsize.x/2.0f, bar.y + bar.height + 6.0f},
+                       22, 0, LIGHTGRAY);
+        }
+        char page[32];
+        snprintf(page, sizeof(page), "%d / %d", gs->tutorial_page + 1, tutorialPageCount);
+        Vector2 psize = MeasureTextEx(gs->cfonts.menu_font3, page, 26, 0);
+        DrawTextEx(gs->cfonts.menu_font3, page,
+                   (Vector2){(s_width - psize.x) * 0.5f, 36.0f}, 26, 0, LIGHTGRAY);
     }
 }

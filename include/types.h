@@ -10,7 +10,8 @@
         NAME_ENTRY=2,
         TUTORIAL=4,
         GAMEOVER=3,
-       CREDITS=5
+       CREDITS=5,
+       DIFFICULTY=6
     } gamescreen;
 
     // ground er jonno struct
@@ -383,6 +384,10 @@ typedef struct animation{
         bool pressed_how_to_play;
         float skip_duration;
         float skip_pressed_timer;
+
+        // difficulty select (chosen after START, before the run starts)
+        int difficulty;             // DIFF_EASY / DIFF_MEDIUM / DIFF_HARD
+        int difficulty_selection;   // highlighted option on the select screen
 
         // hidden cheat: infinite health
         bool godmode;

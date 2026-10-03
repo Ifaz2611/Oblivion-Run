@@ -142,6 +142,8 @@
         load_audio(gs);                      
         PlayMusicStream(gs->audio.menuMusic);
         gs->skip_duration = skip_timer;
+        gs->difficulty = DIFF_MEDIUM;
+        gs->difficulty_selection = DIFF_MEDIUM;
         //set player
         float scale = SPRITE_SCALE * 1.6f;
         float frameW = gs->player_animations[player_idle].frameWidth;   // 80
@@ -346,8 +348,11 @@
     }
 
 void restartGame(GS* gs) {
+    // Apply the player-chosen difficulty to this run.
+    gs->player.maxHealth = diffPlayerMaxHp(gs->difficulty);
+    gs->pgas.pgas_damage = diffPgasDmg(gs->difficulty);
     // Player reset
-    gs->player.health = PLAYER_MAX_HEALTH;
+    gs->player.health = gs->player.maxHealth;
     gs->player.isDead = false;
     gs->player.position = gs->player.initial_position;
     gs->player.velocity = (Vector2){0, 0};
@@ -431,6 +436,9 @@ void updateGame(GS* gs, anim* anim, float dt){
         case MENU: 
             updateMenu(gs); 
             break;
+        case DIFFICULTY:
+            updateDifficultySelect(gs);
+            break;
         case NAME_ENTRY: 
             updateNameEntry(gs); 
             break;
@@ -456,20 +464,13 @@ void updateGame(GS* gs, anim* anim, float dt){
 static void activateMenuSelection(GS* gs) {
     PlaySound(gs->audio.menu_click);
     if (gs->menu_selection == 0) {
-        if (gs->playerName[0] != '\0') {
-            // name already known -> skip retyping, jump straight back into the run
-            restartGame(gs);
-            StopMusicStream(gs->audio.menuMusic);
-            PlayMusicStream(gs->audio.gameMusic);
-            gs->currentscreen = gs->show_tutorial ? TUTORIAL : GAME;
-        } else {
-            gs->currentscreen = NAME_ENTRY; // name page
-            gs->nameLetterCount = 0;        // name reset kora
-            gs->playerName[0] = '\0';
-        }
+        // START -> difficulty picker (name step comes after it).
+        gs->difficulty_selection = gs->difficulty;
+        gs->currentscreen = DIFFICULTY;
     }
     else if (gs->menu_selection == 1) {
         gs->pressed_how_to_play = true;
+        initTutorial(gs);
         gs->currentscreen = TUTORIAL;
     }
     else if (gs->menu_selection == 2) {
@@ -629,6 +630,148 @@ void drawMenu(GS* gs, tex* tex) {
 
 
 
+// ---- difficulty select: picked right after START, before the run starts ----
+static void beginRunAfterDifficulty(GS* gs) {
+    // Difficulty is already stored in gs->difficulty; start (or continue to
+    // name entry) from here so every run honors the fresh choice.
+    if (gs->playerName[0] == '\0') {
+        gs->currentscreen = NAME_ENTRY;
+        gs->nameLetterCount = 0;
+        gs->playerName[0] = '\0';
+        return;
+    }
+    restartGame(gs);
+    StopMusicStream(gs->audio.menuMusic);
+    PlayMusicStream(gs->audio.gameMusic);
+    if (gs->show_tutorial) {
+        initTutorial(gs);
+        gs->currentscreen = TUTORIAL;
+    } else {
+        gs->currentscreen = GAME;
+    }
+}
+
+static void confirmDifficultySelection(GS* gs) {
+    PlaySound(gs->audio.menu_click);
+    gs->difficulty = gs->difficulty_selection;
+    beginRunAfterDifficulty(gs);
+}
+
+void updateDifficultySelect(GS* gs) {
+    ShowCursor();
+    SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+    if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) {
+        gs->difficulty_selection--;
+        if (gs->difficulty_selection < DIFF_EASY) gs->difficulty_selection = DIFF_HARD;
+        PlaySound(gs->audio.menu_select);
+    }
+    if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) {
+        gs->difficulty_selection++;
+        if (gs->difficulty_selection > DIFF_HARD) gs->difficulty_selection = DIFF_EASY;
+        PlaySound(gs->audio.menu_select);
+    }
+    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
+        gs->difficulty_selection--;
+        if (gs->difficulty_selection < DIFF_EASY) gs->difficulty_selection = DIFF_HARD;
+        PlaySound(gs->audio.menu_select);
+    }
+    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
+        gs->difficulty_selection++;
+        if (gs->difficulty_selection > DIFF_HARD) gs->difficulty_selection = DIFF_EASY;
+        PlaySound(gs->audio.menu_select);
+    }
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_SPACE)) {
+        confirmDifficultySelection(gs);
+        updateParallax(gs, 5.0f);
+        return;
+    }
+    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE)) {
+        gs->currentscreen = MENU;
+        gs->menu_selection = 0;
+        updateParallax(gs, 5.0f);
+        return;
+    }
+    // mouse: hover highlights, left-click confirms
+    Vector2 mouse = GetMousePosition();
+    for (int i = DIFF_EASY; i <= DIFF_HARD; i++) {
+        float cw = 360.0f, ch = 300.0f, gap = 60.0f;
+        float totalW = 3 * cw + 2 * gap;
+        float x = s_width / 2.0f - totalW / 2.0f + (float)i * (cw + gap);
+        Rectangle bounds = {x, s_height / 2.0f - 80.0f, cw, ch};
+        if (CheckCollisionPointRec(mouse, bounds)) {
+            if (gs->difficulty_selection != i) {
+                gs->difficulty_selection = i;
+                PlaySound(gs->audio.menu_select);
+            }
+            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                confirmDifficultySelection(gs);
+                return;
+            }
+            break;
+        }
+    }
+    updateParallax(gs, 5.0f);
+}
+
+void drawDifficultySelect(GS* gs) {
+    drawBackgroundMenu(gs);
+    DrawRectangle(0, 0, s_width, s_height, GetColor(0x000000AA));
+
+    float centerX = s_width / 2.0f;
+    const char* title = "CHOOSE DIFFICULTY";
+    Vector2 tsize = MeasureTextEx(gs->cfonts.menu_font1, title, 90, 0);
+    DrawTextEx(gs->cfonts.menu_font1, title, (Vector2){centerX - tsize.x / 2.0f, 180.0f}, 90, 0, RAYWHITE);
+
+    const char* names[3] = {"EASY", "MEDIUM", "HARD"};
+    const char* descs[3] = {
+        "Chill run\n+120 HP\nWeaker foes\nSlow gas",
+        "Classic run\n100 HP\nNormal foes\nNormal gas",
+        "Brutal run\n80 HP\nDeadly foes\nFast gas"
+    };
+    Color accents[3] = {LIME, GOLD, RED};
+
+    float cw = 360.0f, ch = 300.0f, gap = 60.0f;
+    float totalW = 3 * cw + 2 * gap;
+    for (int i = DIFF_EASY; i <= DIFF_HARD; i++) {
+        float x = centerX - totalW / 2.0f + (float)i * (cw + gap);
+        float y = s_height / 2.0f - 80.0f;
+        Rectangle card = {x, y, cw, ch};
+        bool sel = (gs->difficulty_selection == i);
+        DrawRectangleRounded(card, 0.08f, 10, sel ? Fade(accents[i], 0.35f) : Fade(DARKGRAY, 0.85f));
+        DrawRectangleRoundedLines(card, 0.08f, 10, sel ? accents[i] : LIGHTGRAY);
+        if (sel) {
+            Rectangle glow = {x - 6.0f, y - 6.0f, cw + 12.0f, ch + 12.0f};
+            DrawRectangleRoundedLines(glow, 0.08f, 10, Fade(accents[i], 0.5f));
+        }
+        Vector2 nsize = MeasureTextEx(gs->cfonts.menu_font2, names[i], 60, 0);
+        DrawTextEx(gs->cfonts.menu_font2, names[i],
+                   (Vector2){x + cw / 2.0f - nsize.x / 2.0f, y + 25.0f}, 60, 0, sel ? WHITE : LIGHTGRAY);
+        // multi-line description, centered per line
+        float dy = y + 120.0f;
+        char buf[128];
+        strncpy(buf, descs[i], sizeof(buf) - 1);
+        buf[sizeof(buf) - 1] = '\0';
+        char* line = strtok(buf, "\n");
+        while (line) {
+            Vector2 lsize = MeasureTextEx(gs->cfonts.menu_font3, line, 28, 0);
+            DrawTextEx(gs->cfonts.menu_font3, line,
+                       (Vector2){x + cw / 2.0f - lsize.x / 2.0f, dy}, 28, 0, RAYWHITE);
+            dy += 40.0f;
+            line = strtok(NULL, "\n");
+        }
+    }
+
+    const char* hint = "A/D or UP/DOWN: choose   |   ENTER: confirm   |   ESC: back";
+    Vector2 hsize = MeasureTextEx(gs->cfonts.menu_font3, hint, 28, 0);
+    if ((int)(GetTime() * 2) % 2 == 0) {
+        DrawTextEx(gs->cfonts.menu_font3, hint,
+                   (Vector2){centerX - hsize.x / 2.0f, s_height - 120.0f}, 28, 0, LIGHTGRAY);
+    }
+}
+
+
+
+
 void updateNameEntry(GS* gs) {
     //name input nibe
     int key = GetCharPressed();
@@ -665,7 +808,12 @@ void updateNameEntry(GS* gs) {
         restartGame(gs);
         StopMusicStream(gs->audio.menuMusic);
         PlayMusicStream(gs->audio.gameMusic);
-        gs->currentscreen = gs->show_tutorial ? TUTORIAL : GAME;
+        if (gs->show_tutorial) {
+            initTutorial(gs);
+            gs->currentscreen = TUTORIAL;
+        } else {
+            gs->currentscreen = GAME;
+        }
         EnableCursor();
     }
 
@@ -722,6 +870,15 @@ void drawNameEntry(GS* gs) {
     const char* instruction = "Press ENTER to Begin";
     int instWidth = MeasureText(instruction, 20);
     DrawTextEx(gs->cfonts.menu_font2,instruction, (Vector2){(s_width / 2) - (instWidth / 2), boxY + 230}, 20, 0,LIGHTGRAY);
+
+    // show the difficulty picked on the previous screen
+    {
+        const char* dname = (gs->difficulty == DIFF_EASY) ? "EASY" : (gs->difficulty == DIFF_HARD) ? "HARD" : "MEDIUM";
+        Color dcolor = (gs->difficulty == DIFF_EASY) ? LIME : (gs->difficulty == DIFF_HARD) ? RED : GOLD;
+        const char* dtext = TextFormat("DIFFICULTY: %s", dname);
+        Vector2 dsize = MeasureTextEx(gs->cfonts.menu_font3, dtext, 26, 0);
+        DrawTextEx(gs->cfonts.menu_font3, dtext, (Vector2){(s_width / 2) - dsize.x / 2.0f, boxY + boxHeight + 12.0f}, 26, 0, dcolor);
+    }
 }
 
 

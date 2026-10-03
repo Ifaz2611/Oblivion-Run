@@ -135,4 +135,51 @@
 #define detail_max_scale        3.0f
 #define skip_timer 2.0f
 
+// player-chosen difficulty (GS.difficulty): picked on the DIFFICULTY screen
+// after START, before name entry. MEDIUM == legacy vanilla tuning.
+#define DIFF_EASY   0
+#define DIFF_MEDIUM 1
+#define DIFF_HARD   2
+
+static inline float diffEnemyHpMult(int d){
+    if(d == DIFF_EASY) return 0.7f;
+    if(d == DIFF_HARD) return 1.6f;
+    return 1.0f;
+}
+static inline float diffEnemySpeedMult(int d){
+    if(d == DIFF_EASY) return 0.8f;
+    if(d == DIFF_HARD) return 1.25f;
+    return 1.0f;
+}
+static inline float diffEnemyDmg(int d){
+    if(d == DIFF_EASY) return 3.0f;
+    if(d == DIFF_HARD) return 8.0f;
+    return (float)enemy_attack_power;
+}
+static inline float diffSpikeDmg(int d){
+    if(d == DIFF_EASY) return 15.0f;
+    if(d == DIFF_HARD) return 35.0f;
+    return (float)spike_damage;
+}
+static inline float diffBombDmg(int d){
+    if(d == DIFF_EASY) return 20.0f;
+    if(d == DIFF_HARD) return 45.0f;
+    return (float)bomb_damage;
+}
+static inline float diffPgasDmg(int d){
+    if(d == DIFF_EASY) return 7.0f;
+    if(d == DIFF_HARD) return 15.0f;
+    return 10.0f;
+}
+static inline float diffPgasSpeedMult(int d){
+    if(d == DIFF_EASY) return 0.8f;
+    if(d == DIFF_HARD) return 1.3f;
+    return 1.0f;
+}
+static inline float diffPlayerMaxHp(int d){
+    if(d == DIFF_EASY) return 120.0f;
+    if(d == DIFF_HARD) return 80.0f;
+    return (float)PLAYER_MAX_HEALTH;
+}
+
 #endif  

@@ -10,6 +10,10 @@ void updateGameplay(GS* gs,anim* anim,float dt);
 void updateMenu(GS* gs);
 void drawMenu(GS* gs,tex* tex);
 
+//difficulty select (after START, before name entry)
+void updateDifficultySelect(GS* gs);
+void drawDifficultySelect(GS* gs);
+
 //game 
 void updateNameEntry(GS* gs);
 void drawNameEntry(GS* gs);

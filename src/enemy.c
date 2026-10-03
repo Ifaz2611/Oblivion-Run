@@ -228,7 +228,7 @@ void updateEnemy(GS* gs,float dt){
                     break;
                 }
                 float dir = enemy->facing_left ? -1.0f : 1.0f;
-                enemy->velocity.x = dir * enSpeed;
+                enemy->velocity.x = dir * enSpeed * diffEnemySpeedMult(gs->difficulty);
                 enemy->position.x += enemy->velocity.x * dt;
                 updateEnemyAnimation(enemy, enemy_running);
                 break;
@@ -303,7 +303,7 @@ void move_pgas(GS* gs,float dt){
             gs->pgas.position.x = targetEdgeX - gs->pgas.pgas_anim[0].width/2.0f;
         }
     } else {
-        gs->pgas.velocity.x = 280.0f * (1.0f + 0.5f*getDifficultyFactor(gs));
+        gs->pgas.velocity.x = 280.0f * (1.0f + 0.5f*getDifficultyFactor(gs)) * diffPgasSpeedMult(gs->difficulty);
     }
 
     gs->pgas.position = Vector2Add(gs->pgas.position, Vector2Scale(gs->pgas.velocity, dt));
@@ -343,7 +343,7 @@ void DamageFromSpikes(GS* gs,float dt){
         if(!gs->spikes[i].isactive) continue;
 
         if(CheckCollisionRecs(getPlayerRect(gs), gs->spikes[i].rect)){
-            if(gs->spike_cooldown==0) damagePlayer(gs,spike_damage);
+            if(gs->spike_cooldown==0) damagePlayer(gs, diffSpikeDmg(gs->difficulty));
             gs->spike_cooldown = spikecooldown;
         }   
 
@@ -356,7 +356,8 @@ void spawnEnemy(GS* gs, float x, float groundY){
         float diff = getDifficultyFactor(gs);
         e->position = (Vector2){ x, groundY - e->height };
         e->velocity = (Vector2){0,0};
-        e->health = enemy_max_health * (1.0f + 0.8f*diff); 
+        e->health = enemy_max_health * (1.0f + 0.8f*diff) * diffEnemyHpMult(gs->difficulty); 
+        e->maxhealth = e->health;
         e->isdead = false;
         e->invultimer = 0.0f;
         e->attack_cooldown = 0.0f;

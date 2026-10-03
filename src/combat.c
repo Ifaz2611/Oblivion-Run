@@ -44,7 +44,7 @@ void updateCombat(GS *gs, float dt){
             if(enemy_attack_start_frame <= e->currentframe && e->currentframe <= enemy_attack_end_frame){
                 Rectangle enemy_hitbox = getEnemyHitbox(en);
                 if(!en->hashitplayerthisswing && CheckCollisionRecs(getPlayerRect(gs),enemy_hitbox)){
-                    damagePlayer(gs,enemy_attack_power);                   
+                    damagePlayer(gs, diffEnemyDmg(gs->difficulty));                   
                     en->hashitplayerthisswing=true;    
                 }          
             }
@@ -95,7 +95,7 @@ void DamageFromBombs(GS* gs, float dt) {
                 // Re-check range at the blast moment so escaping negates damage.
                 float distNow = Vector2Distance(playerCenter, bombCenter);
                 if (distNow <= bomb_explosion_range) {
-                    damagePlayer(gs, bomb_damage);
+                    damagePlayer(gs, diffBombDmg(gs->difficulty));
                 }
             }
         }

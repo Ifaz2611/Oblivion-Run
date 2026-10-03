@@ -127,4 +127,8 @@ void drawDifficultyMeter(GS* gs){
     const char* label = "DIFFICULTY";
     Vector2 labelSize = MeasureTextEx(gs->cfonts.menu_font3, label, 40, 0);
     DrawTextEx(gs->cfonts.menu_font3, label, (Vector2){posX + barWidth/2.0f - labelSize.x/2.0f, posY + barHeight + 5.0f}, 30, 0, RAYWHITE);
+    const char* diffName = (gs->difficulty == DIFF_EASY) ? "EASY" : (gs->difficulty == DIFF_HARD) ? "HARD" : "MEDIUM";
+    Color diffColor = (gs->difficulty == DIFF_EASY) ? LIME : (gs->difficulty == DIFF_HARD) ? RED : GOLD;
+    Vector2 diffSize = MeasureTextEx(gs->cfonts.menu_font3, diffName, 40, 0);
+    DrawTextEx(gs->cfonts.menu_font3, diffName, (Vector2){posX + barWidth/2.0f - diffSize.x/2.0f, posY + barHeight + 40.0f}, 30, 0, diffColor);
 }

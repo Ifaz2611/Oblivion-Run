@@ -13,20 +13,27 @@
 #include"player.h"
 int main(){
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
-    InitWindow(1920,1080,"OBLIVION RUN");
+    InitWindow(1280, 720, "OBLIVION RUN");
     SetTargetFPS(60);
-    // On 1080p (or smaller) screens a decorated 1920x1080 window is taller
-    // than the desktop, so switch to borderless to fill the display exactly.
-    // On larger monitors keep a centered 1920x1080 window.
+    // Plain windowed mode: fit a 16:9 window inside the monitor (with room
+    // for title bar / taskbar), capped at 1920x1080, then center it.
+    // Never borderless / fullscreen — the user can resize or maximize.
     {
         int monitor = GetCurrentMonitor();
         int mw = GetMonitorWidth(monitor);
         int mh = GetMonitorHeight(monitor);
-        if (mw <= 1920 && mh <= 1080) {
-            if (!IsWindowState(FLAG_BORDERLESS_WINDOWED_MODE)) ToggleBorderlessWindowed();
-        } else {
-            SetWindowPosition(mw/2 - GetScreenWidth()/2, mh/2 - GetScreenHeight()/2);
+        int ww = mw - 80;
+        if (ww > 1920) ww = 1920;
+        int wh = (ww * 9) / 16;
+        if (wh > mh - 120) {
+            wh = mh - 120;
+            ww = (wh * 16) / 9;
         }
+        if (ww < 960) ww = 960;
+        if (wh < 540) wh = 540;
+        SetWindowMinSize(960, 540);
+        SetWindowSize(ww, wh);
+        SetWindowPosition(mw / 2 - ww / 2, mh / 2 - wh / 2);
     }
     InitAudioDevice();
     GS gs={0};
@@ -43,6 +50,9 @@ int main(){
         if (gs.currentscreen == MENU) {
             drawMenu(&gs,&tex); 
         } 
+        else if (gs.currentscreen == DIFFICULTY) {
+            drawDifficultySelect(&gs);
+        }
         else if (gs.currentscreen == NAME_ENTRY) { 
             drawNameEntry(&gs);
         }

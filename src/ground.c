@@ -119,7 +119,12 @@
             if(distSincePattern >= gs->gapBetweenTheNextPattern)
             {
                 const pattern *p;
-                if(gs->distance_traveled<40000)  p = &all_easy_patterns[GetRandomValue(0, pattern_count1 - 1)];
+                // harder chosen difficulty enters the medium (gap-heavy) set sooner;
+                // easy stays on the safe set longer. MEDIUM keeps legacy 40000.
+                float hardThreshold = 40000.0f;
+                if(gs->difficulty == DIFF_EASY) hardThreshold = 60000.0f;
+                else if(gs->difficulty == DIFF_HARD) hardThreshold = 20000.0f;
+                if(gs->distance_traveled < hardThreshold) p = &all_easy_patterns[GetRandomValue(0, pattern_count1 - 1)];
                 else p = &all_medium_patterns[GetRandomValue(0, pattern_count2 - 1)];
 
                 spawn_pattern(gs,p,gs->next_spawn_point,ground_y,s_height);
@@ -135,8 +140,19 @@
 
                 float diff = getDifficultyFactor(gs);
                 
-                int minGap = (int)(1600 - 800*diff);   // 1600 -> 800
-                int maxGap = (int)(2500 - 1000*diff);  // 2500 -> 1500
+                // Safe-ground gaps between patterns: easy runs get longer
+                // breathers, hard runs get tighter chains. MEDIUM == legacy.
+                int minGap, maxGap;
+                if(gs->difficulty == DIFF_EASY){
+                    minGap = (int)(2000 - 600*diff);
+                    maxGap = (int)(3000 - 800*diff);
+                } else if(gs->difficulty == DIFF_HARD){
+                    minGap = (int)(1200 - 500*diff);   // 1200 -> 700
+                    maxGap = (int)(2000 - 700*diff);   // 2000 -> 1300
+                } else {
+                    minGap = (int)(1600 - 800*diff);   // 1600 -> 800
+                    maxGap = (int)(2500 - 1000*diff);  // 2500 -> 1500
+                }
                 gs->gapBetweenTheNextPattern = (float)GetRandomValue(minGap, maxGap);
             }
             else
