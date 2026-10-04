@@ -15,9 +15,6 @@ int main(){
     SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT);
     InitWindow(1280, 720, "OBLIVION RUN");
     SetTargetFPS(60);
-    // Plain windowed mode: fit a 16:9 window inside the monitor (with room
-    // for title bar / taskbar), capped at 1920x1080, then center it.
-    // Never borderless / fullscreen — the user can resize or maximize.
     {
         int monitor = GetCurrentMonitor();
         int mw = GetMonitorWidth(monitor);
