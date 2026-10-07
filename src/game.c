@@ -27,8 +27,8 @@
 
     for(int i=0;i<MaxChunkNum;i++){
 
-        float width = gs->gchunk[i].texture.width;
-        float height = gs->gchunk[i].texture.height;
+        float width = textures->floating_platform.width;
+        float height = textures->floating_platform.height;
         Rectangle chunk = gs->gchunk[i].groundChunkRect;
         Rectangle source = (Rectangle){
             .height = height,
@@ -43,7 +43,7 @@
             .y = chunk.y
         };
         
-        DrawTexturePro(gs->gchunk[i].texture,source,dest,(Vector2){0,0},0,WHITE);
+        DrawTexturePro(textures->floating_platform,source,dest,(Vector2){0,0},0,WHITE);
 
         
         // DrawRectangleLinesEx(gs->gchunk[i].groundChunkRect,3,BLACK);
@@ -67,7 +67,7 @@
     }      
 }    
 
-    drawSpikes(gs);
+    drawSpikes(gs, textures);
 
     drawBombs(gs, textures);
     drawHealthDrops(gs, textures);
@@ -222,13 +222,9 @@
 
         // all other properties of gs are set to zero by default
         gs->last_bush_x = gs->next_spawn_point;
+        gs->last_ground_y = ground_y;
+        gs->last_screen_height = (float)s_height;
 
-
-    }
-    void unloadenemy(GS* gs){
-        for(int i=0;i<max_enemy_num;i++){
-            UnloadEnemyAnims(&gs->enemy[i]); 
-        }
     }
 
     void updateCheatCode(GS* gs){
@@ -287,6 +283,11 @@
     void updateGameplay(GS* gs,anim* anim,float dt){
         ShowCursor();
         SetMouseCursor(MOUSE_CURSOR_CROSSHAIR);
+        if(IsKeyPressed(KEY_ESCAPE)){
+            gs->currentscreen = PAUSED;
+            gs->pause_selection = 0;
+            return;
+        }
         updateTouchButtons(gs);
         updateCheatCode(gs);
         Rectangle pr = getPlayerRect(gs);
@@ -346,6 +347,54 @@
         isGameover(gs,dt);
 
     }
+
+void updateWorldForResize(GS* gs){
+    const float screenHeight = (float)s_height;
+    if(screenHeight == gs->last_screen_height) return;
+
+    const float groundDelta = ground_y - gs->last_ground_y;
+    const float heightDelta = screenHeight - gs->last_screen_height;
+
+    gs->player.position.y += groundDelta;
+    gs->player.initial_position.y += groundDelta;
+    gs->player.prevBottom += groundDelta;
+    gs->pgas.position.y += groundDelta;
+
+    for(int i = 0; i < MaxChunkNum; i++){
+        Rectangle *chunk = &gs->gchunk[i].groundChunkRect;
+        if(chunk->width > 0.0f){
+            bool reachesBottom = fabsf(chunk->y + chunk->height - gs->last_screen_height) < 1.0f;
+            chunk->y += groundDelta;
+            if(reachesBottom) chunk->height += heightDelta - groundDelta;
+        }
+        if(gs->gchunk[i].hasHealthItem) gs->gchunk[i].healthItemRect.y += groundDelta;
+    }
+    for(int i = 0; i < max_spikes; i++)
+        if(gs->spikes[i].isactive) gs->spikes[i].rect.y += groundDelta;
+    for(int i = 0; i < max_bombs; i++)
+        if(gs->bombs[i].isactive) gs->bombs[i].rect.y += groundDelta;
+    for(int i = 0; i < max_enemy_num; i++)
+        if(gs->enemy[i].isactive) gs->enemy[i].position.y += groundDelta;
+    for(int i = 0; i < max_health_drops; i++)
+        if(gs->healthDrops[i].active) gs->healthDrops[i].rect.y += groundDelta;
+    for(int i = 0; i < max_explosions; i++)
+        if(gs->explosions[i].active) gs->explosions[i].position.y += groundDelta;
+    for(int i = 0; i < 10; i++)
+        if(gs->floatTexts[i].active) gs->floatTexts[i].position.y += groundDelta;
+    for(int i = 0; i < max_bush_decor; i++)
+        if(gs->bushDecor[i].active) gs->bushDecor[i].position.y += groundDelta;
+    for(int i = 0; i < max_detail_decor; i++)
+        if(gs->detailDecor[i].active) gs->detailDecor[i].position.y += groundDelta;
+    for(int i = 0; i < 25; i++){
+        gs->fogpuffs[i].offset.y += groundDelta;
+        if(gs->fogpuffs[i].offset.y < fog_top_gap) gs->fogpuffs[i].offset.y = fog_top_gap;
+        if(gs->fogpuffs[i].offset.y > screenHeight - fog_bottom_gap)
+            gs->fogpuffs[i].offset.y = screenHeight - fog_bottom_gap;
+    }
+
+    gs->last_ground_y = ground_y;
+    gs->last_screen_height = screenHeight;
+}
 
 void restartGame(GS* gs) {
     // Apply the player-chosen difficulty to this run.
@@ -431,7 +480,90 @@ void restartGame(GS* gs) {
     updateGround(gs);
 }
 
+static Rectangle pauseOptionRect(int index){
+    const float width = 360.0f, height = 64.0f, gap = 18.0f;
+    const float totalHeight = 3.0f * height + 2.0f * gap;
+    return (Rectangle){(s_width - width) * 0.5f,
+                       (s_height - totalHeight) * 0.5f + index * (height + gap),
+                       width, height};
+}
+
+static void activatePauseSelection(GS* gs){
+    PlaySound(gs->audio.menu_click);
+    if(gs->pause_selection == 0){
+        gs->currentscreen = GAME;
+    }else if(gs->pause_selection == 1){
+        restartGame(gs);
+        gs->currentscreen = GAME;
+    }else{
+        gs->currentscreen = MENU;
+        gs->menu_selection = 0;
+        PlayMusicStream(gs->audio.menuMusic);
+    }
+}
+
+void updatePauseMenu(GS* gs){
+    ShowCursor();
+    SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+    if(IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE)){
+        gs->currentscreen = GAME;
+        PlaySound(gs->audio.menu_click);
+        return;
+    }
+    if(IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)){
+        gs->pause_selection = (gs->pause_selection + 2) % 3;
+        PlaySound(gs->audio.menu_select);
+    }
+    if(IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)){
+        gs->pause_selection = (gs->pause_selection + 1) % 3;
+        PlaySound(gs->audio.menu_select);
+    }
+    if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_SPACE)){
+        activatePauseSelection(gs);
+        return;
+    }
+    Vector2 mouse = GetMousePosition();
+    for(int i = 0; i < 3; i++){
+        if(!CheckCollisionPointRec(mouse, pauseOptionRect(i))) continue;
+        if(gs->pause_selection != i){
+            gs->pause_selection = i;
+            PlaySound(gs->audio.menu_select);
+        }
+        if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) activatePauseSelection(gs);
+        break;
+    }
+}
+
+void drawPauseMenu(GS* gs){
+    DrawRectangle(0, 0, s_width, s_height, Fade(BLACK, 0.72f));
+    const char *title = "PAUSED";
+    Vector2 titleSize = MeasureTextEx(gs->cfonts.menu_font2, title, 72, 0);
+    Rectangle firstOption = pauseOptionRect(0);
+    DrawTextEx(gs->cfonts.menu_font2, title,
+               (Vector2){(s_width - titleSize.x) * 0.5f, firstOption.y - 100.0f},
+               72, 0, GOLD);
+
+    const char *labels[3] = {"RESUME", "RESTART RUN", "MAIN MENU"};
+    for(int i = 0; i < 3; i++){
+        Rectangle rect = pauseOptionRect(i);
+        bool selected = (gs->pause_selection == i);
+        DrawRectangleRounded(rect, 0.22f, 8, selected ? Fade(GOLD, 0.9f) : Fade(DARKGRAY, 0.9f));
+        DrawRectangleRoundedLines(rect, 0.22f, 8, selected ? GOLD : LIGHTGRAY);
+        Vector2 labelSize = MeasureTextEx(gs->cfonts.menu_font3, labels[i], 36, 0);
+        DrawTextEx(gs->cfonts.menu_font3, labels[i],
+                   (Vector2){rect.x + (rect.width - labelSize.x) * 0.5f,
+                             rect.y + (rect.height - labelSize.y) * 0.5f},
+                   36, 0, selected ? BLACK : RAYWHITE);
+    }
+    const char *hint = "ESC: Resume";
+    Vector2 hintSize = MeasureTextEx(gs->cfonts.menu_font3, hint, 24, 0);
+    DrawTextEx(gs->cfonts.menu_font3, hint,
+               (Vector2){(s_width - hintSize.x) * 0.5f, s_height - 52.0f},
+               24, 0, LIGHTGRAY);
+}
+
 void updateGame(GS* gs, anim* anim, float dt){
+    updateWorldForResize(gs);
     switch(gs->currentscreen){
         case MENU: 
             updateMenu(gs); 
@@ -444,6 +576,9 @@ void updateGame(GS* gs, anim* anim, float dt){
             break;
         case GAME: 
             updateGameplay(gs, anim, dt); 
+            break;
+        case PAUSED:
+            updatePauseMenu(gs);
             break;
         case TUTORIAL:
             updateTutorial(gs, dt);  
@@ -569,8 +704,8 @@ void drawMenu(GS* gs, tex* tex) {
     );
 
     float position = 0;
-    float widthG = gs->gchunk[0].texture.width;
-    float heightG = gs->gchunk[0].texture.height;
+    float widthG = tex->floating_platform.width;
+    float heightG = tex->floating_platform.height;
     while(position<=s_width){
         Rectangle source = (Rectangle){
             .height = heightG,
@@ -585,7 +720,7 @@ void drawMenu(GS* gs, tex* tex) {
             .y = player_posy+270.0f
         };
         
-        DrawTexturePro(gs->gchunk[0].texture,source,dest,(Vector2){0,0},0,WHITE);
+        DrawTexturePro(tex->floating_platform,source,dest,(Vector2){0,0},0,WHITE);
         position+=widthG*4.0f;
     }
     DrawRectangle(0,0,s_width,s_height,GetColor(0x00000022));
@@ -845,31 +980,30 @@ void drawNameEntry(GS* gs) {
 
     // title text 
     const char* title = "ENTER YOUR HERO NAME";
-    int titleWidth = MeasureText(title, 30);
-    DrawTextEx(gs->cfonts.menu_font2,title, (Vector2){(s_width / 2) - (titleWidth / 2), boxY + 40},0, 30, GOLD);
+    Vector2 titleSize = MeasureTextEx(gs->cfonts.menu_font2, title, 30, 0);
+    DrawTextEx(gs->cfonts.menu_font2,title, (Vector2){(s_width / 2.0f) - (titleSize.x / 2.0f), boxY + 40},30, 0, GOLD);
 
     // white color er name input deyar box
     DrawRectangle(boxX + 50, boxY + 120, boxWidth - 100, 60, Fade(LIGHTGRAY,.6f));
     DrawRectangleLines(boxX + 50, boxY + 120, boxWidth - 100, 60, Fade(LIGHTGRAY,.6f));
 
     // type kora player name 
-    int width = MeasureText(gs->playerName,40.0f);
-
     DrawTextEx(gs->cfonts.menu_font3,gs->playerName, (Vector2){boxX + 70, boxY + 135,}, 40,0, BLACK);
 
-    DrawTextEx(gs->cfonts.menu_font3,gs->playerName, (Vector2){player_posx+tex.width/2.0f-width/2.0f+160.0f, player_posy,}, 40,0, YELLOW);
+    Vector2 nameSize = MeasureTextEx(gs->cfonts.menu_font3, gs->playerName, 40, 0);
+    DrawTextEx(gs->cfonts.menu_font3,gs->playerName, (Vector2){player_posx+tex.width/2.0f-nameSize.x/2.0f+160.0f, player_posy,}, 40,0, YELLOW);
 
 
     // cursor blink 
     if ((int)(GetTime() * 3) % 2 == 0 && gs->nameLetterCount < 24) {
-        int textW = MeasureText(gs->playerName, 40);
+        int textW = (int)MeasureTextEx(GetFontDefault(), gs->playerName, 40, 0).x;
         DrawText(" _", boxX + 75 + textW, boxY + 135, 40, BLACK);
     }
 
     // instruction text 
     const char* instruction = "Press ENTER to Begin";
-    int instWidth = MeasureText(instruction, 20);
-    DrawTextEx(gs->cfonts.menu_font2,instruction, (Vector2){(s_width / 2) - (instWidth / 2), boxY + 230}, 20, 0,LIGHTGRAY);
+    Vector2 instructionSize = MeasureTextEx(gs->cfonts.menu_font2, instruction, 20, 0);
+    DrawTextEx(gs->cfonts.menu_font2,instruction, (Vector2){(s_width / 2.0f) - (instructionSize.x / 2.0f), boxY + 230}, 20, 0,LIGHTGRAY);
 
     // show the difficulty picked on the previous screen
     {

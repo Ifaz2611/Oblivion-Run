@@ -6,7 +6,7 @@ void updateGround(GS *gs);
 void groundedCheck(GS* gs);
 void pushgroundchunk(GS* gs,float x,float y,float height,float width,bool has_health_iteam);
 void addspike(GS* gs,float x,float y,float height,float width);
-void drawSpikes(GS* gs);
+void drawSpikes(GS* gs, tex* textures);
 Rectangle getGroundcheckRec(GS* gs);
 void spawn_healthrect(GS* gs,float x,float y,float width);
 

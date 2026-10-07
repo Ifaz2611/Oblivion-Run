@@ -178,7 +178,7 @@
         }
     }
 
-    void drawSpikes(GS* gs)
+    void drawSpikes(GS* gs, tex* textures)
     {
         for(int i = 0; i < max_spikes; i++)
         {
@@ -199,7 +199,7 @@
             .width  = r.width,
             .height = r.height
         };
-        DrawTexturePro(gs->spikes[i].spike_sprite, source, dest, (Vector2){0,0}, 0.0f, WHITE);
+        DrawTexturePro(textures->spike_sprite, source, dest, (Vector2){0,0}, 0.0f, WHITE);
             
         }
     }

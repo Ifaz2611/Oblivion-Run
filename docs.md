@@ -10,7 +10,7 @@
 You run automatically to the right through a procedurally generated haunted forest (**OBLIVION RUN**). You:
 
 1. Pick a hero name.
-2. (Optionally) watch a 9-page story + controls tutorial.
+2. (Optionally) watch the 10-page story + controls tutorial.
 3. Run / jump / dash / melee-attack endlessly while:
    - skeleton enemies chase and swing at you,
    - spikes and proximity bombs hurt you,
@@ -60,7 +60,7 @@ Project-Z_Game/
     health.c/.h   damagePlayer, updateHealth, HP UI, health drops, floating +/-HP text
     score.c/.h    High-score file I/O, game-over scores, difficulty meter
     explosion.c/.h Ring-buffer explosions (8-frame strip)
-    tutorial.c/.h 9-page typewriter tutorial
+    tutorial.c/.h 10-page typewriter tutorial
     sound.c/.h    Music/SFX load, per-frame UpdateMusicStream, footsteps
     ground.c/.h   Endless ground gen, difficulty, spikes/bombs/decor spawning
     pattern.c/.h  ASCII tilemap patterns (easy/medium sets)
@@ -95,7 +95,7 @@ Everything lives in one `GS gs = {0}` created in `main()`:
 
 | Group | Fields |
 |---|---|
-| Screen | `currentscreen: GAME=0, MENU=1, NAME_ENTRY=2, GAMEOVER=3, TUTORIAL=4, CREDITS=5` (non-sequential!) |
+| Screen | `currentscreen: GAME=0, MENU=1, NAME_ENTRY=2, GAMEOVER=3, TUTORIAL=4, CREDITS=5, DIFFICULTY=6, PAUSED=7` |
 | Player | `player: Player`, `player_animations[8]`, `current_player_anim_name`, `current_player_state` |
 | Camera | `camera: Camera2D`, `last_camera_x` (for parallax delta) |
 | Ground | `gchunk[50]`, `next_spawn_point`, `chunk_index` (ring), `lastPatternEndX`, `gapBetweenTheNextPattern` |
@@ -113,8 +113,8 @@ Key sub-structs:
 - `Player`: `position` (sprite top-left), `velocity`, `initial_position`, `width/height` (tight hitbox, not sprite), `collisionOffset`, `isgrounded`, `facing_left`, `isdashing/dashduration/dashcooldowntimer`, `isattacking/hitduration/hashitthiswing`, `invultimer`, `health/maxHealth/isDead`, `prevBottom`.
 - `Enemy`: `position/velocity`, `width/height`, `facing_left`, `enemy_animations[5]`, `current_enemy_anim_name`, `state: idle/walking/attacking/hurting/dead`, `isactive`, `health/maxhealth/isdead`, `attack_cooldown`, `hashitplayerthisswing`, `invultimer`.
 - `anim`: `tex, frameWidth/Height, framecount, currentframe, frameduration, frametimer, timedependent, looping, isfinished`.
-- `groundChunk`: `groundChunkRect`, `hasHealthItem/healthItemRect/healthItemCollected`, `texture` (each chunk holds its own copy of floating_platform texture).
-- `bomb{rect,isactive,armed,fuseTimer}`, `spike{rect,spike_sprite,isactive}`, `HealthDrop{rect,healAmount,active}`, `Explosion{position(center),timer,currentframe,active}`, `FloatingText{position,timer,maxTime,active,text[16],color}`, `fogpuff{offset,radius,speed,phase}`, `poison_gas{position,pgas_anim[12],velocity,pgas_damage,current_texture,frameduration,frametimer,attackcooldown,attacktimer}`.
+- `groundChunk`: `groundChunkRect`, `hasHealthItem/healthItemRect/healthItemCollected`; floating-platform and spike textures are shared from `tex`.
+- `bomb{rect,isactive,armed,fuseTimer}`, `spike{rect,isactive}`, `HealthDrop{rect,healAmount,active}`, `Explosion{position(center),timer,currentframe,active}`, `FloatingText{position,timer,maxTime,active,text[16],color}`, `fogpuff{offset,radius,speed,phase}`, `poison_gas{position,pgas_anim[12],velocity,pgas_damage,current_texture,frameduration,frametimer,attackcooldown,attacktimer}`.
 
 Player state ordering matters: `idle < running < jumping < attacking < dashing < hurting < dead` — code uses `current_state > X` as "higher priority blocks lower" guards.
 
@@ -123,15 +123,16 @@ Player state ordering matters: `idle < running < jumping < attacking < dashing <
 ## 5. Main loop (`src/main.c:38-79`)
 
 Per frame:
-1. `dt = GetFrameTime()`.
-2. `updateGame(&gs,&anim,dt)` — dispatches by `currentscreen` to `updateMenu / updateNameEntry / updateGameplay / updateTutorial / updateGameover`.
+1. `dt = min(GetFrameTime(), 1/30s)`.
+2. `updateGame(&gs,&anim,dt)` — dispatches by `currentscreen`, including `PAUSED`; gameplay updates stop while paused.
 3. `updateMusic(&gs)` — `UpdateMusicStream(menuMusic); UpdateMusicStream(gameMusic);` every frame (required by raylib).
 4. `BeginDrawing(); ClearBackground(RAYWHITE);` then:
    - `MENU → drawMenu`, `NAME_ENTRY → drawNameEntry`, `TUTORIAL → drawTutorial`,
-   - `GAME → BeginMode2D(camera); drawGame(); EndMode2D(); drawHealthUI(); drawScoreHUD(); drawDifficultyMeter();`,
-   - `GAMEOVER → drawGameover` (CREDITS branch is commented out).
+   - `GAME/PAUSED → BeginMode2D(camera); drawGame(); EndMode2D(); HUD; pause overlay if needed`,
+   - `GAMEOVER → drawGameover`, `CREDITS → drawCredits`.
 5. `EndDrawing()`.
-6. On exit: `unloadTexture, unloadenemy, unloadAudio, CloseAudioDevice, CloseWindow`.
+6. On exit: `unloadTexture, unloadAudio, CloseAudioDevice, CloseWindow`. Enemy animation
+   structs borrow the shared enemy textures, so only the texture owner unloads them.
 
 Init (`initGame`, `src/game.c`): crosshair cursor, `loadTexture`, `logo = LoadTexture("assets/PNG/Logo.png")`, `loadAnimation`, `loadHighScores`, `currentscreen=MENU`, menu music play, player sized at `scale = 3.0*1.6 = 4.8` (`width = 17*scale`, `height = 32*scale`, `collisionOffset = {30*scale, 16*scale}`, `pos = {(80*scale)/2+200, ground_y-48*scale}`, `velocity.x=300`), camera `offset={s_width/2-200,0}, zoom=1`, health `100/100`, world `next_spawn_point=-s_width`, scrollfactors `{0.1,0.25,0.45,0.65,0.85,0.95}`, 100 enemies pre-loaded inactive, pgas at `{-800, ground_y-h+50}`, `starting_timer=1.0`.
 
@@ -140,23 +141,28 @@ Init (`initGame`, `src/game.c`): crosshair cursor, `loadTexture`, `logo = LoadTe
 ## 6. Screens & flow
 
 ### MENU (`updateMenu/drawMenu`, `src/game.c`)
-- Options index `0=START GAME, 1=TUTORIAL (how-to-play), 2=EXIT`.
+- Options index `0=START GAME, 1=TUTORIAL (how-to-play), 2=CREDITS, 3=EXIT`.
 - Keyboard: `DOWN/S` next (wrap), `UP/W` prev, `ENTER/KP_ENTER/SPACE` activate + `PlaySound(menu_click)`.
-- Mouse: measures each label with `menu_font2 size 60` at `(700,h/2-50)`, `(760,h/2+25)`, `(820,h/2+100)`; hover sets selection, click activates (`menu_select` on hover change).
-- Activate: `0 → NAME_ENTRY (clear name)`, `1 → TUTORIAL with pressed_how_to_play=true`, `2 → quit_game=true`.
-- Draw: `drawBackgroundMenu()` + `0x000000AA` dim, 3 demo sprites (player air_attack frame2, enemy_hurt frame2 flipped, enemy_attack frame5), tiled ground strip at `player_posy+270`, `0x00000022` overlay, logo + shadow at top-center, 3 labels (selected = `"> LABEL <"` white, else dark gray).
+- Mouse: measures each label with `menu_font2 size 60` at `(700,h/2-50)`, `(760,h/2+25)`, `(820,h/2+100)`, `(880,h/2+175)`; hover sets selection, click activates (`menu_select` on hover change).
+- Activate: `0 → DIFFICULTY`, `1 → TUTORIAL with pressed_how_to_play=true`, `2 → CREDITS`, `3 → quit_game=true`.
+- Draw: `drawBackgroundMenu()` + `0x000000AA` dim, 3 demo sprites (player air_attack frame2, enemy_hurt frame2 flipped, enemy_attack frame5), tiled ground strip at `player_posy+270`, `0x00000022` overlay, logo + shadow at top-center, 4 labels (selected = `"> LABEL <"` white, else dark gray).
 
 ### NAME_ENTRY
 - Typing: `GetCharPressed()` loop, accept ASCII `32..125` while `count < 24`, `PlaySound(typing)` per char, null-terminate. `BACKSPACE` deletes (`menu_select`). `ENTER` with `count>0` → `menu_click`, `restartGame()`, stop menu music / play game music, go to `TUTORIAL` if `show_tutorial` else `GAME`.
 - Draw: dimmed menu BG, centered `600x300` box, player idle sprite above box (`*1.6`), `"ENTER YOUR HERO NAME"` gold 30, input box `Fade(LIGHTGRAY,.6)`, name drawn in box (font3 40 black) + yellow copy above player, blinking `" _"` cursor, `"Press ENTER to Begin"` hint.
 
-### TUTORIAL (`src/tutorial.c`, 9 pages, typewriter)
-Pages: 0 story (poison gas / Oblivion Run), 1 controls (`A/D` move, `SPACE` jump, `LEFT SHIFT` dash, `LEFT CLICK` attack) + spikes/bombs warning, 2 enemy chase, 3 platform health, 4 enemy-drop health, 5 poison gas, 6 dash-gap tip (`Large_gap.png`), 7 duplicate tip (`Large_gap2.png`), 8 enjoy.
+### TUTORIAL (`src/tutorial.c`, 10 pages, typewriter)
+Pages: 0 story, 1 controls, 2 obstacles, 3 enemy, 4 platform health, 5 enemy-drop health, 6 poison gas, 7 dash-gap tip (`Large_gap.png`), 8 stay-calm tips (text only), 9 enjoy.
 - State machine `tut_fadein → tut_typing → tut_waiting → tut_fadeout`: fade `alpha ±1.5/s`, type `0.03s/char`, `ENTER/SPACE` instant-completes typing or advances from waiting, fade-out then next page or exit (`pressed_how_to_play ? MENU : GAME`). Pre-game flow only: hold `ENTER 2s` to skip entirely (`show_tutorial=false → GAME`).
 - Draw: menu BG + double dim, visible prefix `text[0..charsShown]`, manual newline split at `x=380, y=150, lineHeight=34`, font3 size 50 white with `alpha`, per-page illustration sprite when `waiting`, blinking continue prompt at bottom.
 
 ### GAME (see §7–§12)
 Side-scrolling survival. HUD is screen-space (after `EndMode2D`): HP bar + hero name (top-left), `SCORE: %06d` (top-center), difficulty bar (top-right).
+Press `ESC` to pause. The pause menu offers resume, restart run, and main menu.
+
+### PAUSED
+Gameplay simulation is stopped; the world and HUD remain visible beneath the pause overlay. Use `UP/DOWN` and `ENTER`, or click, to resume, restart the run, or return to the main menu. `ESC`/`BACKSPACE` resumes.
+Player attacks hit one overlapping enemy per swing (the nearest to the active hitbox center). Resizing the window height shifts active world objects with the ground line and preserves bottom-anchored ground.
 
 ### GAMEOVER
 - Trigger (`isGameover`): when `player.isDead && die anim isfinished`: `timer += dt` to `1.0s`, then stop game music / play menu music, `currentscreen=GAMEOVER`, `isNewHighScore = tryAddHighScore(...)`, `PlaySound(gameOverSting)`.
@@ -276,6 +282,7 @@ Pool: 100 pre-loaded, `isactive=false` until `spawnEnemy(x, groundY)` (first fre
 | `SPACE` | Game, grounded | Jump `vy=-700` |
 | `LEFT_SHIFT` | Game, grounded, `cd<=0` | Dash `±2200 + vy=-350`, 0.45s, cd 0.6s |
 | `LEFT_CLICK` | Game | Melee (0.54s ground / 0.56s air, hits frames 3–6, 30 dmg, 60px reach) |
+| `ESC` | Game / paused | Open pause menu / resume |
 | `ENTER / SPACE` | Tutorial | Complete typing / next page |
 | Hold `ENTER 2s` | Tutorial pre-game | Skip to GAME |
 | Type + `BACKSPACE` + `ENTER` | Name entry | 24-char name → start |
@@ -286,14 +293,9 @@ Pool: 100 pre-loaded, `isactive=false` until `spawnEnemy(x, groundY)` (first fre
 
 ## 14. Known bugs / fragility (do not "fix" silently)
 
-1. Absolute texture paths (`texture.c`) — fails outside author's `D:\` machine.
-2. `tex->hurt` never loaded → hurt anim is 0-size; `player_hurt` may render nothing.
-3. Dash sheet sliced `/6` but `framecount=4`; attack sheet `/14` but plays 9 looping (should be once).
-4. `unloadAudio`/`unloadTexture` leak most assets.
-5. Bomb always deals full 30 on fuse expiry, even if player escaped radius.
-6. `spawn_healthrect` writes to `gchunk[chunk_index]` that the next `pushgroundchunk` may overwrite — order-dependent.
-7. Hint fade at 40k uses dead `4300/6700` constants; tutorial pages 6+7 text concatenated without newline; `drawScoreHUD` mixes font sizes 40/60; `gamescreen` enum non-sequential (`TUTORIAL=4, GAMEOVER=3`).
-8. `data/highscore.txt` empty/missing is handled (zeros), but CWD must be workspace root.
+1. Dash sheet sizing and ground-attack sheet slicing still need a visual audit in `animation.c`.
+2. Asset paths and high-score storage are relative; launch from the repository root so `assets/...` and `data/highscore.txt` resolve.
+3. `gamescreen` numeric values are non-sequential (`TUTORIAL=4, GAMEOVER=3`); switch statements handle them explicitly.
 
 ---
 

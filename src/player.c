@@ -4,6 +4,7 @@
 #include"enemy.h"
 #include<stdio.h>
 #include<string.h>
+#include<math.h>
 #include"health.h"
 void setplayerstate(GS* gs){
     playerstate newstate;
@@ -364,24 +365,33 @@ void checkCeilingCollision(GS* gs){
 }
 
 void checkWallCollision(GS* gs){
-    Rectangle leftRect  = getLeftCheckRec(gs);
-    Rectangle rightRect = getRightCheckRec(gs);
+    const float direction = gs->player.velocity.x;
+    if(direction == 0.0f) return;
 
-    for(int i=0;i<MaxChunkNum;i++){
-        Rectangle chunk = gs->gchunk[i].groundChunkRect;
-        if(chunk.width <= 0) continue;
+    bool collided = false;
+    for(int pass = 0; pass < MaxChunkNum; pass++){
+        Rectangle sideRect = direction < 0.0f ? getLeftCheckRec(gs) : getRightCheckRec(gs);
+        bool pushed = false;
+        float resolvedX = gs->player.position.x;
+        for(int i = 0; i < MaxChunkNum; i++){
+            Rectangle chunk = gs->gchunk[i].groundChunkRect;
+            if(chunk.width <= 0.0f || gs->player.prevBottom <= chunk.y + 1.0f) continue;
+            if(!CheckCollisionRecs(sideRect, chunk)) continue;
 
-        if(gs->player.prevBottom <= chunk.y + 1.0f) continue;
-
-        if(gs->player.velocity.x < 0 && CheckCollisionRecs(leftRect, chunk)){
-            gs->player.position.x = chunk.x + chunk.width - gs->player.collisionOffset.x;
-            gs->player.velocity.x = 0;
-            break;
+            pushed = true;
+            float candidateX = direction < 0.0f
+                ? chunk.x + chunk.width - gs->player.collisionOffset.x
+                : chunk.x - gs->player.width - gs->player.collisionOffset.x;
+            if(direction < 0.0f){
+                if(candidateX > resolvedX) resolvedX = candidateX;
+            }else if(candidateX < resolvedX){
+                resolvedX = candidateX;
+            }
         }
-        if(gs->player.velocity.x > 0 && CheckCollisionRecs(rightRect, chunk)){
-            gs->player.position.x = chunk.x - gs->player.width - gs->player.collisionOffset.x;
-            gs->player.velocity.x = 0;
-            break;
-        }
+        if(!pushed) break;
+        collided = true;
+        if(fabsf(resolvedX - gs->player.position.x) < 0.01f) break;
+        gs->player.position.x = resolvedX;
     }
+    if(collided) gs->player.velocity.x = 0.0f;
 }

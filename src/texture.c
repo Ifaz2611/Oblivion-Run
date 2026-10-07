@@ -7,6 +7,7 @@ Texture2D LoadPixelTexture(const char *path) {
 }
 
 void unloadTexture(tex* tex, GS* gs){
+    (void)gs;
     UnloadTexture(tex->Background);
     UnloadTexture(tex->dash);
     UnloadTexture(tex->die);
@@ -38,19 +39,11 @@ void unloadTexture(tex* tex, GS* gs){
     UnloadTexture(tex->platform_health_drop);
     UnloadTexture(tex->pgas);
     UnloadTexture(tex->Large_gap);
-    UnloadTexture(tex->Large_gap2);
-    if (tex->floating_platform.id != 0) UnloadTexture(tex->floating_platform);
+    UnloadTexture(tex->floating_platform);
 
     for(int i=0;i<bush_sprite_count;i++)   UnloadTexture(tex->bush_sprites[i]);
     for(int i=0;i<detail_sprite_count;i++) UnloadTexture(tex->detail_sprites[i]);
 
-    // per-slot copies owned by game state
-    for(int i=0;i<max_spikes;i++){
-        if(gs->spikes[i].spike_sprite.id != 0) UnloadTexture(gs->spikes[i].spike_sprite);
-    }
-    for(int i=0;i<MaxChunkNum;i++){
-        if(gs->gchunk[i].texture.id != 0) UnloadTexture(gs->gchunk[i].texture);
-    }
     for(int i=0;i<12;i++){
         if(gs->pgas.pgas_anim[i].id != 0) UnloadTexture(gs->pgas.pgas_anim[i]);
     }
@@ -100,10 +93,6 @@ void loadTexture(tex* tex, GS* gs){
         gs->pgas.pgas_anim[i-1] = LoadPixelTexture(TextFormat("assets/PNG/Posionous_Smoke_Frame_%d.png",i));
     }
     
-    for(int i=0;i<max_spikes;i++){
-        gs->spikes[i].spike_sprite = LoadPixelTexture("assets/sprites/spike_sprite.png");
-    }
-    
     tex->creditor_photo = LoadPixelTexture("assets/sprites/ifaz.png");
 
   
@@ -112,7 +101,7 @@ void loadTexture(tex* tex, GS* gs){
     tex->health_item = LoadPixelTexture("assets/sprites/health_item.png");
    
     tex->bomb_sprite = LoadPixelTexture("assets/sprites/bomb.png");
-    for(int i=0;i<MaxChunkNum;i++) gs->gchunk[i].texture = LoadPixelTexture("assets/background_elements/floating_platform.png");
+    tex->floating_platform = LoadPixelTexture("assets/background_elements/floating_platform.png");
 
     tex->bomb_explosion = LoadPixelTexture("assets/sprites/bomb_explosion.png");
 
@@ -120,7 +109,6 @@ void loadTexture(tex* tex, GS* gs){
     tex->platform_health_drop = LoadPixelTexture("assets/PNG/platform health.png");
     tex->pgas = LoadPixelTexture("assets/PNG/pgas.png");
     tex->Large_gap = LoadPixelTexture("assets/PNG/large_gap1.png");
-    tex->Large_gap2 = LoadPixelTexture("assets/PNG/large_gap_2.png");
 
     tex->bush_sprites[0] = LoadPixelTexture("assets/foreground_elements/BUSH FOREGROUND 1-2.png");
     tex->bush_sprites[1] = LoadPixelTexture("assets/foreground_elements/BUSH FOREGROUND 1-3.png");

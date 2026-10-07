@@ -4,6 +4,7 @@
 #include"health.h"
 #include"explosion.h"
 #include"raymath.h"
+#include<math.h>
 
 void updateCombat(GS *gs, float dt){
     Player* p =  &gs->player;
@@ -12,21 +13,26 @@ void updateCombat(GS *gs, float dt){
     // ==---player er jono--===
     if(p->isattacking){
         p->hitduration-=dt;
-        if(attackstartframe<= a->currentframe && a->currentframe <= attackendframe){
-            // check collision of hitbox with enemy rectangle then decrease enemy health
+        if(!p->hashitthiswing && attackstartframe<= a->currentframe && a->currentframe <= attackendframe){
+            Rectangle player_hitbox = getplayerhitbox(gs);
+            int target = -1;
+            float nearest = INFINITY;
             for(int i=0;i<max_enemy_num;i++){
-
                 Enemy* en = &gs->enemy[i];
-
-                if(!en->isactive) continue; //jodi more jai then kichu korar dorkar nai
-
-                Rectangle player_hitbox = getplayerhitbox(gs);
-                
-                if( CheckCollisionRecs(player_hitbox,getEnemyRect(en))){
-                    damageEnemy(gs,&gs->enemy[i],player_attack_power);                    
-                    if(!p->hashitthiswing)PlaySound(gs->audio.hit);
-                    p->hashitthiswing = true; //jodi ekbare shudhu ekta enemy ke attack korte pare tahole                                               // can be changed later
-                } 
+                if(!en->isactive || en->isdead) continue;
+                Rectangle enemyRect = getEnemyRect(en);
+                if(!CheckCollisionRecs(player_hitbox, enemyRect)) continue;
+                float distance = fabsf((enemyRect.x + enemyRect.width * 0.5f) -
+                                       (player_hitbox.x + player_hitbox.width * 0.5f));
+                if(distance < nearest){
+                    nearest = distance;
+                    target = i;
+                }
+            }
+            if(target >= 0){
+                damageEnemy(gs, &gs->enemy[target], player_attack_power);
+                PlaySound(gs->audio.hit);
+                p->hashitthiswing = true;
             }
         }
         if(p->hitduration<=0){

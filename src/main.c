@@ -39,6 +39,7 @@ int main(){
     initGame(&gs,&tex,&anim);
     while(!WindowShouldClose() && !gs.quit_game){
         float dt = GetFrameTime();
+        if(dt > 1.0f/30.0f) dt = 1.0f/30.0f;
         updateGame(&gs,&anim,dt);
         updateMusic(&gs);
         BeginDrawing();
@@ -56,14 +57,15 @@ int main(){
         else if(gs.currentscreen==TUTORIAL){
             drawTutorial(&gs,&tex);
         }
-        else if (gs.currentscreen == GAME) {
+        else if (gs.currentscreen == GAME || gs.currentscreen == PAUSED) {
             BeginMode2D(gs.camera); 
             drawGame(&gs, &tex);
             EndMode2D();
             drawHealthUI(&gs);
             drawScoreHUD(&gs);
             drawDifficultyMeter(&gs);
-            drawTouchControls(&gs);
+            if(gs.currentscreen == GAME) drawTouchControls(&gs);
+            else drawPauseMenu(&gs);
             }
         else if (gs.currentscreen == CREDITS) {
              drawCredits(&gs,&tex);
@@ -76,7 +78,6 @@ int main(){
         EndDrawing();       
     }
     unloadTexture(&tex, &gs);
-    unloadenemy(&gs);
     unloadAudio(&gs);
     CloseAudioDevice();
     CloseWindow();

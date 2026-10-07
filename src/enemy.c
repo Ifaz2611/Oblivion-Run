@@ -7,8 +7,11 @@
 #include"ground.h"
 
 
-Rectangle getEnemyRect(Enemy* enemy){    
-    return (Rectangle) {.height = enemy->height, .width = enemy->width, .x=enemy->position.x, .y=enemy->position.y};
+Rectangle getEnemyRect(Enemy* enemy){
+    anim *frame = &enemy->enemy_animations[enemy->current_enemy_anim_name];
+    float width = frame->frameWidth * SPRITE_SCALE * 1.8f;
+    float height = frame->frameHeight * SPRITE_SCALE * 1.8f;
+    return (Rectangle){enemy->position.x, enemy->position.y + enemy->height - height, width, height};
 }
 
 Rectangle getEnemyHitbox(Enemy* enemy){
@@ -86,21 +89,13 @@ Enemy loadEnemy(tex* tex){
 
 
 }
-void UnloadEnemyAnims(Enemy *e) {
-    for (int i = 0; i < enemy_anim_num; i++) {
-        if (e->enemy_animations[i].tex.id != 0) UnloadTexture(e->enemy_animations[i].tex);
-    }
-}
 static void drawEnemyHealthbar(Enemy* enemy){
     if(enemy->state == dead_enemy) return;   // no bar while dying/dead
 
-    anim* frame = &enemy->enemy_animations[enemy->current_enemy_anim_name];
-    float drawHeight = frame->frameHeight * SPRITE_SCALE * 1.8f;
-    float groundY = s_height*3.7f/4;
-    float spriteTop = groundY - drawHeight;
+    Rectangle body = getEnemyRect(enemy);
 
-    float barX = enemy->position.x + enemy->width/2.0f - enemy_healthbar_width/2.0f;
-    float barY = spriteTop - enemy_healthbar_yoffset;
+    float barX = body.x + body.width/2.0f - enemy_healthbar_width/2.0f;
+    float barY = body.y - enemy_healthbar_yoffset;
 
     float pct = enemy->health / enemy->maxhealth;
     if(pct < 0.0f) pct = 0.0f;
@@ -120,7 +115,6 @@ void drawEnemy(Enemy* enemy){
 
     float drawWidth  = frame->frameWidth  * SPRITE_SCALE * 1.8f;
     float drawHeight = frame->frameHeight * SPRITE_SCALE * 1.8f;
-    float groundY = s_height*3.7f/4;
     Rectangle source = {
         .x = frame->currentframe*frame->frameWidth,
         .y = 0,
@@ -129,7 +123,7 @@ void drawEnemy(Enemy* enemy){
     };
     Rectangle dest = {
         .x = enemy->position.x,
-        .y = groundY-drawHeight,
+        .y = enemy->position.y + enemy->height - drawHeight,
         .width = drawWidth,
         .height = drawHeight 
     };
@@ -291,7 +285,7 @@ void move_pgas(GS* gs,float dt){
 
     if(gap > pgas_max_lag){
         // fallen too far behind (player dashed away, etc): snap forward instead of trailing forever
-        gs->pgas.position.x = (targetEdgeX - pgas_teleport_lag) - gs->pgas.pgas_anim[0].width/2.0f - 480.0f;
+        gs->pgas.position.x = targetEdgeX - pgas_teleport_lag - gs->pgas.pgas_anim[0].width/2.0f;
         gs->pgas.velocity.x = 0.0f;
         return;
     }

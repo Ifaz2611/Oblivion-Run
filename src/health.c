@@ -9,7 +9,6 @@ void updateHealth(GS* gs, float  dt){
     (void)dt;
     if(gs->godmode && !gs->player.isDead) gs->player.health = gs->player.maxHealth;
     if(gs->player.isDead) return;
-    // gs->player.health -= HEALTH_DECAY_RATE * dt;
     if(gs->player.health <= 0.0f){
         gs->player.health = 0.0f;
         gs->player.isDead = true;

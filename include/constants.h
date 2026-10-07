@@ -49,9 +49,8 @@
 #define spikecooldown .60f
 #define spike_damage 25.0f
 
-// health  maximum and koto kore kombe seta 
+// health maximum
 #define PLAYER_MAX_HEALTH 100.0f
-#define HEALTH_DECAY_RATE 4.0f 
 #define player_invul_time .04f
 #define player_real_width 17.0f
 #define player_real_height 32.0f

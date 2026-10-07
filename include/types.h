@@ -11,7 +11,8 @@
         TUTORIAL=4,
         GAMEOVER=3,
        CREDITS=5,
-       DIFFICULTY=6
+       DIFFICULTY=6,
+       PAUSED=7
     } gamescreen;
 
     // ground er jonno struct
@@ -22,8 +23,6 @@
         bool hasHealthItem;         // chunk e health ache kina seta dekhbe 
         Rectangle healthItemRect;   // health item er shape 
         bool healthItemCollected;   // item ta ki already picked or not
-        Texture2D texture;
-
     }groundChunk;
 
 
@@ -109,7 +108,6 @@ typedef struct texture{ // game er sob gulo texture ekhane store kora hoy and je
     Texture2D enemy_health_drop;
     Texture2D platform_health_drop;
     Texture2D Large_gap;
-    Texture2D Large_gap2;
     Texture2D pgas;
 
 
@@ -223,7 +221,6 @@ typedef struct animation{
 
     typedef struct spike{
         Rectangle rect;
-        Texture2D spike_sprite;
         bool isactive;
     }spike;
 
@@ -388,6 +385,9 @@ typedef struct animation{
         // difficulty select (chosen after START, before the run starts)
         int difficulty;             // DIFF_EASY / DIFF_MEDIUM / DIFF_HARD
         int difficulty_selection;   // highlighted option on the select screen
+        int pause_selection;
+        float last_ground_y;
+        float last_screen_height;
 
         // hidden cheat: infinite health
         bool godmode;
