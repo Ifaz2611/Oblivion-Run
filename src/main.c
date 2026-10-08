@@ -82,3 +82,6 @@ int main(){
     CloseAudioDevice();
     CloseWindow();
 }
+
+
+// Main Run code by ifaz 
