@@ -6,7 +6,7 @@ void cameraMovement(GS* gs){
         gs->camera.target.x = 0.0f;
         gs->camera.target.y = 0.0f;
     }
-    // gs->camera.target = (Vector2){gs->player.position.x,0.0f};
+
     float player_center_x = gs->player.position.x  + gs->player.collisionOffset.x + gs->player.width / 2.0f;
     float camera_right_pos = gs->camera.target.x + camera_half_deadzone;
 

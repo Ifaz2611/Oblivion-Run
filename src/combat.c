@@ -10,8 +10,6 @@
 void updateCombat(GS *gs, float dt){
     Player* p =  &gs->player;
     anim* a = &gs->player_animations[gs->current_player_anim_name];
-
-    // ==---player er jono--===
     if(p->isattacking){
         p->hitduration-=dt;
         if(!p->hashitthiswing && attackstartframe<= a->currentframe && a->currentframe <= attackendframe){
@@ -41,8 +39,6 @@ void updateCombat(GS *gs, float dt){
             p->hashitthiswing = false; 
         }
     } 
-    
-    // --enemy er jonno--
     for(int i=0;i<max_enemy_num;i++){
         Enemy* en = &gs->enemy[i];
         anim* e = &en->enemy_animations[en->current_enemy_anim_name];
@@ -58,7 +54,6 @@ void updateCombat(GS *gs, float dt){
             }
         }
     }
-    // pgas er jonno
     gs->pgas.attacktimer-=dt;
     if(gs->pgas.attacktimer<=0) gs->pgas.attacktimer=0;
     if(CheckCollisionRecs(getPlayerRect(gs),getPgasRect(gs)) && gs->pgas.attacktimer==0){
@@ -85,8 +80,6 @@ void DamageFromBombs(GS* gs, float dt) {
         };
         bool playerInRange = Vector2Distance(playerCenter, bombCenter) <= bomb_explosion_range;
 
-        // Arm on proximity, but once armed the fuse keeps ticking even if the
-        // player escapes. Damage is range-checked at detonation time only.
         if (playerInRange && !b->armed) {
             b->armed = true;
             b->fuseTimer = bomb_fuse_time;
@@ -100,13 +93,10 @@ void DamageFromBombs(GS* gs, float dt) {
                 b->armed = false;
                 spawnExplosion(gs, bombCenter);
                 PlaySound(gs->audio.explosion);
-                // Re-check range at the blast moment so escaping negates damage.
                 float distNow = Vector2Distance(playerCenter, bombCenter);
                 if (distNow <= bomb_explosion_range) {
                     damagePlayer(gs, diffBombDmg(gs->difficulty));
                 }
-                // bomb blasts always shake (even on a clean dodge); the stronger
-                // bomb shake wins over the hurt shake via triggerScreenShake().
                 triggerScreenShake(gs, SHAKE_BOMB_DURATION, SHAKE_BOMB_MAGNITUDE);
                 triggerHitStop(gs, HITSTOP_BOMB_DURATION);
             }

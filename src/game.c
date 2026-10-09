@@ -17,9 +17,6 @@
     #include "explosion.h"
     #include"tutorial.h"
     void drawGame(GS* gs,tex *textures){
-    
-    //drawing background elements
-
     drawBackground(gs);
     drawBushLine(gs, textures);
     drawDetailDecor(gs, textures);  
@@ -44,13 +41,6 @@
         };
         
         DrawTexturePro(textures->floating_platform,source,dest,(Vector2){0,0},0,WHITE);
-
-        
-        // DrawRectangleLinesEx(gs->gchunk[i].groundChunkRect,3,BLACK);
-        
-        
-        // ei chunk e heal item thakle  and seta pick na kore
-        //thakle box ta green 
         if(gs->gchunk[i].hasHealthItem && !gs->gchunk[i].healthItemCollected){
             Rectangle source ={0,0,textures->health_item.width, textures->health_item.height};
 
@@ -73,31 +63,22 @@
     drawHealthDrops(gs, textures);
     drawExplosions(gs,textures);
 
-    //drawing player sprite
+
 
         drawPlayerSprite(gs);
-        // DrawRectangleLinesEx(getPlayerRect(gs),10,(gs->player.isattacking)?RED:BLUE);
 
-    //drawing enemy sprites
         for(int i=0;i<max_enemy_num;i++){
            if(gs->enemy[i].isactive) drawEnemy(&gs->enemy[i]);
-            // DrawRectangleLinesEx(getEnemyHitbox(&gs->enemy[i]),20,BLACK);
-            // DrawRectangleLinesEx(getEnemyRect(&gs->enemy[i]),10,BLUE);
         }
         drawFog(gs);
         drawFogPuffs(gs,(float)GetTime());
 
-        // drawPgasSprite(gs); 
-        // drawPgasSprite(gs);
         
       for(int i=0;i<10;i++){
        if(gs->floatTexts[i].active){
         float alpha = gs->floatTexts[i].timer/  (gs->floatTexts[i].maxTime);
 
         Color textColor =Fade(gs->floatTexts[i].color,alpha);
-
-       // DrawTextEx(gs->cfonts.menu_font1,gs->floatTexts[i].text,gs->floatTexts[i].position,30,0,textColor);
-        
        DrawText(gs->floatTexts[i].text, (int)gs->floatTexts[i].position.x, (int)gs->floatTexts[i].position.y, 30, textColor);
 
        }
@@ -106,7 +87,7 @@
         const char* hint = "!!!! DASH OVER THE GAPS !!!!";
         Vector2 size = MeasureTextEx(gs->cfonts.menu_font3, hint, 60, 0);
 
-        float screenLeft = gs->camera.target.x - gs->camera.offset.x;   // left edge of the screen in world coords
+        float screenLeft = gs->camera.target.x - gs->camera.offset.x;   
         float x = screenLeft + s_width/2.0f - size.x/2.0f;
 
         float d = gs->distance_traveled;
@@ -124,19 +105,18 @@
 
         SetMouseCursor(MOUSE_CURSOR_CROSSHAIR);
 
-    // load textures
+
         loadTexture(tex,gs);
 
         gs->logo = LoadTexture("assets/PNG/Logo.png");
-        
-    // load animations
+
         loadAnimation(gs,tex);
    
        loadHighScores(gs->highScores);
 
         //menu 
         gs->currentscreen = MENU;
-        gs->menu_selection = 0; //1st e start game e select hoye tahkbe 
+        gs->menu_selection = 0; 
         gs->quit_game = false;
         gs->show_tutorial = true;
         load_audio(gs);                      
@@ -171,7 +151,6 @@
         
         gs->camera.target = (Vector2){0.0f,0.0f};
         gs->last_camera_x = gs->camera.target.x;
-        //heath function er variable gulo
         gs->player.maxHealth = PLAYER_MAX_HEALTH;
         gs->player.health = PLAYER_MAX_HEALTH;
         gs->player.isDead = false;
@@ -179,18 +158,16 @@
         // INITIAL GROUND / PATTERN GENERATION
         gs->chunk_index = 0;
 
-        // Start spawning from the beginning of the world
         gs->next_spawn_point = -s_width;
 
-        // No pattern has been spawned yet
+
         gs->lastPatternEndX = gs->next_spawn_point;
 
-        // Distance before the first pattern
         gs->gapBetweenTheNextPattern = 2*s_width;
 
-        // Generate the initial world
+
         updateGround(gs);
-        // setup background layers — farthest (slowest apparent motion) to nearest
+
         float bg_scrollfactors[BG_LAYER_COUNT] = {0.1f, 0.25f, 0.45f,0.65f , 0.85f,.95f};
         
         for(int i=0;i<BG_LAYER_COUNT;i++){
@@ -203,7 +180,6 @@
                 .height = l->tex.height
             };
         }
-        // loading all the enemy information at the start of the game 
         for(int i=0;i<max_enemy_num;i++){
             gs->enemy[i] = loadEnemy(tex);
             gs->enemy[i].isactive = false; // spawn_pattern() activates slots as chunks generate
@@ -219,8 +195,6 @@
         
 
         gs->starting_timer = STARTING_TIMER;
-
-        // all other properties of gs are set to zero by default
         gs->last_bush_x = gs->next_spawn_point;
         gs->last_ground_y = ground_y;
         gs->last_screen_height = (float)s_height;
@@ -344,7 +318,6 @@
         for(int i = 0; i < 10; i++){
             if(gs->floatTexts[i].active){
                 gs->floatTexts[i].position.y -= 40.0f * dt; 
-                //40 px kore per sec ee uthbe 
             gs->floatTexts[i].timer -= dt;              
                 
                 if(gs->floatTexts[i].timer <= 0) {
@@ -360,10 +333,8 @@
 void updateWorldForResize(GS* gs){
     const float screenHeight = (float)s_height;
     if(screenHeight == gs->last_screen_height) return;
-
     const float groundDelta = ground_y - gs->last_ground_y;
     const float heightDelta = screenHeight - gs->last_screen_height;
-
     gs->player.position.y += groundDelta;
     gs->player.initial_position.y += groundDelta;
     gs->player.prevBottom += groundDelta;
@@ -406,7 +377,6 @@ void updateWorldForResize(GS* gs){
 }
 
 void restartGame(GS* gs) {
-    // Apply the player-chosen difficulty to this run.
     gs->player.maxHealth = diffPlayerMaxHp(gs->difficulty);
     gs->pgas.pgas_damage = diffPgasDmg(gs->difficulty);
     // Player reset
@@ -464,9 +434,8 @@ void restartGame(GS* gs) {
     gs->bushDecor_index = 0;
     gs->detailDecor_index = 0;
     
-    gs->starting_timer = STARTING_TIMER;   // otherwise the intro run only happens on the first game
+    gs->starting_timer = STARTING_TIMER;  
     gs->current_player_state = idle_player;
-    // death anim must be reset or the next death skips its finish-wait in isGameover()
     gs->player_animations[player_die].currentframe = 0;
     gs->player_animations[player_die].frametimer = 0.0f;
     gs->player_animations[player_die].isfinished = false;
@@ -635,7 +604,7 @@ void updateGame(GS* gs, anim* anim, float dt){
 static void activateMenuSelection(GS* gs) {
     PlaySound(gs->audio.menu_click);
     if (gs->menu_selection == 0) {
-        // START -> difficulty picker (name step comes after it).
+
         gs->difficulty_selection = gs->difficulty;
         gs->currentscreen = DIFFICULTY;
     }
@@ -655,20 +624,18 @@ static void activateMenuSelection(GS* gs) {
 void updateMenu(GS* gs) {
     ShowCursor();
     SetMouseCursor(MOUSE_CURSOR_DEFAULT);
-   //down key niche toggle korar jonno
     if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S) || padDown()) {
         gs->menu_selection++;
         PlaySound(gs->audio.menu_select);
         if (gs->menu_selection > 3) gs->menu_selection = 0; // four menu options: start, tutorial, credits, exit
     }
-    //up key te vice versa
     if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W) || padUp()) {
         gs->menu_selection--;
         PlaySound(gs->audio.menu_select);
         if (gs->menu_selection < 0) gs->menu_selection = 3;
     }
 
-    //enter key (keyboard)
+
     if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_SPACE) || padConfirm()) {
         activateMenuSelection(gs);
         updateParallax(gs,5.0f);
@@ -1186,7 +1153,6 @@ void drawGameover(GS* gs){
 
 
 void updateCredits(GS* gs) {
-    // esc ba enter chaple abar menu te ferot jabe
     if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_BACKSPACE) || padConfirm() || padBack()) {
         gs->currentscreen = MENU;
         gs->menu_selection = 0;

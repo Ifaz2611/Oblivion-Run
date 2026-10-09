@@ -3,7 +3,7 @@
 #include<string.h>
 #include"enemy.h"
 
-//defining the patterns
+
 static const char* gapspike[] = { 
     "....S....",
     "GG..GGG.."};
@@ -133,7 +133,6 @@ void spawn_pattern(GS* gs,const pattern *p,float baseX,float groundY,float scree
                     break;
                 case 'F':
                 case 'R':
-                    // explicit brute spawn (second enemy type, parametrized — no new structs)
                     spawnEnemy(gs, colX, groundY, ENEMY_TYPE_BRUTE);
                     break;
                 case 'S':

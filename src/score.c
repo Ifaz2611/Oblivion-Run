@@ -16,10 +16,9 @@ void loadHighScores(HighScoreEntry highScores[MAX_HIGH_SCORES]) {
     char line[128];
     for (int i = 0; i < MAX_HIGH_SCORES; i++) {
         if (!fgets(line, sizeof(line), f)) {
-            break; // remaining slots keep the zero defaults above
+            break; 
         }
         line[strcspn(line, "\r\n")] = '\0';
-        // Split on the LAST space so hero names may contain spaces.
         char* lastSpace = strrchr(line, ' ');
         if (!lastSpace || lastSpace == line) {
             continue;
@@ -30,7 +29,7 @@ void loadHighScores(HighScoreEntry highScores[MAX_HIGH_SCORES]) {
             continue;
         }
         if (strcmp(line, "---") == 0) {
-            line[0] = '\0'; // placeholder written for empty slots
+            line[0] = '\0'; 
         }
         strncpy(highScores[i].name, line, MAX_NAME_LEN - 1);
         highScores[i].name[MAX_NAME_LEN - 1] = '\0';
@@ -54,13 +53,13 @@ int tryAddHighScore(HighScoreEntry highScores[MAX_HIGH_SCORES], const char* name
 
     int i = MAX_HIGH_SCORES - 1;
     while (i > 0 && highScores[i - 1].score < newScore) {
-        highScores[i] = highScores[i - 1];   // struct assignment copies name + score together
+        highScores[i] = highScores[i - 1];   
         i--;
     }
 
     highScores[i].score = newScore;
     strncpy(highScores[i].name, name, MAX_NAME_LEN - 1);
-    highScores[i].name[MAX_NAME_LEN - 1] = '\0';   // strncpy doesn't guarantee this on truncation
+    highScores[i].name[MAX_NAME_LEN - 1] = '\0';   
 
     saveHighScores(highScores);
     return 1;
@@ -103,18 +102,15 @@ void drawDifficultyMeter(GS* gs){
 
     float barWidth = 250.0f;
     float barHeight = 25.0f;
-    float posX = s_width - barWidth - 30.0f;   // top-right corner, mirrors the health bar's top-left placement
+    float posX = s_width - barWidth - 30.0f; 
     float posY = 30.0f;
-
-    // green -> yellow -> red as diff goes 0 -> 1, same two-stop blend feel as the health bar's stepped colors
-    // but smooth here since difficulty is continuous rather than stepped
     unsigned char r, g;
     if(diff < 0.5f){
-        float t = diff / 0.5f;          // 0..1 across the green->yellow half
+        float t = diff / 0.5f;         
         r = (unsigned char)(255 * t);
         g = 255;
     } else {
-        float t = (diff - 0.5f) / 0.5f; // 0..1 across the yellow->red half
+        float t = (diff - 0.5f) / 0.5f; 
         r = 255;
         g = (unsigned char)(255 * (1.0f - t));
     }

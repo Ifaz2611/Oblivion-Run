@@ -98,7 +98,7 @@ Enemy loadEnemy(tex* tex){
 
 }
 static void drawEnemyHealthbar(Enemy* enemy){
-    if(enemy->state == dead_enemy) return;   // no bar while dying/dead
+    if(enemy->state == dead_enemy) return; 
 
     Rectangle body = getEnemyRect(enemy);
 
@@ -177,7 +177,6 @@ void updateEnemy(GS* gs,float dt){
         Enemy* enemy = &gs->enemy[i];
         if(!enemy->isactive) continue;
 
-        // far behind the camera: free the slot
         if(getEnemyRect(enemy).x + enemy->width < left_edge - enemy_despawn_margin){
             enemy->isactive = false;
             continue;
@@ -187,14 +186,11 @@ void updateEnemy(GS* gs,float dt){
         float enemy_center_x  = enemy->position.x+enemy->width/2.0f;
         float dist = fabsf(player_center_x - enemy_center_x);
 
-        // don't turn around mid-swing or while dying
         if(enemy->state != attacking_enemy && enemy->state != dead_enemy)
             enemy->facing_left = (player_center_x < enemy_center_x);
 
         if(enemy->attack_cooldown > 0) enemy->attack_cooldown -= dt;
         anim* a = &enemy->enemy_animations[enemy->current_enemy_anim_name];
-
-        // player dead: chasing/attacking enemies calm down (no frozen mid-swing pose)
         if(!player_alive && (enemy->state == walking_enemy || enemy->state == attacking_enemy)){
             enemy->state = idle_enemy;
             restartEnemyAnim(enemy, enemy_idle);
@@ -217,7 +213,7 @@ void updateEnemy(GS* gs,float dt){
                 break;
             }
             case hurting_enemy:{
-                if(enemy->current_enemy_anim_name == enemy_hurt && !a->isfinished) break; // still stunned
+                if(enemy->current_enemy_anim_name == enemy_hurt && !a->isfinished) break; 
                 if(dist <= attackrange && player_alive) startEnemyAttack(gs,enemy);
                 else{
                     enemy->state = walking_enemy;
@@ -303,15 +299,14 @@ void updateEnemyAnimations(GS* gs,float dt){
 }
 
 void move_pgas(GS* gs,float dt){
-    Rectangle playerRect = getPlayerRect(gs);           // actual collision box, offset included
+    Rectangle playerRect = getPlayerRect(gs);           
     float playerRight = playerRect.x + playerRect.width;
     float pgasEdgeX = gs->pgas.position.x + gs->pgas.pgas_anim[0].width/2.0f;
-    float targetEdgeX = playerRight + pgas_player_margin; // where the fog front should sit to fully cover the player
+    float targetEdgeX = playerRight + pgas_player_margin; 
 
     float gap = targetEdgeX - pgasEdgeX;
 
     if(gap > pgas_max_lag){
-        // fallen too far behind (player dashed away, etc): snap forward instead of trailing forever
         gs->pgas.position.x = targetEdgeX - pgas_teleport_lag - gs->pgas.pgas_anim[0].width/2.0f;
         gs->pgas.velocity.x = 0.0f;
         return;
@@ -320,7 +315,6 @@ void move_pgas(GS* gs,float dt){
     if(gap < 20.0f){
         gs->pgas.velocity.x = 0.0f;
         if(gs->player.velocity.x < 0){
-            // player backing into the fog: keep the front pinned just past them, don't let it overshoot further
             gs->pgas.position.x = targetEdgeX - gs->pgas.pgas_anim[0].width/2.0f;
         }
     } else {
@@ -438,10 +432,6 @@ void initFogPuffs(GS* gs){
         gs->fogpuffs[i].phase = (float)GetRandomValue(0, 628)/100.0f;
     }
 }
-
-// draws one vertical strip of fog at world-x `x`, width `w`, faded at top/bottom,
-// scaled by alphaScale (0..1) so callers can fade it horizontally too
-// the untouched-by-the-edge part of the fog: same 3-band top/mid/bottom fade as before
 static void drawFogSolidBand(float x, float w){
     float topY = fog_top_gap;
     float bottomY = s_height - fog_bottom_gap;
@@ -456,8 +446,6 @@ static void drawFogSolidBand(float x, float w){
     DrawRectangleGradientV((int)x,(int)midY2,(int)w,(int)fog_vfade, solid, clear);
 }
 
-// the leading-edge zone: fades smoothly toward the right AND keeps the top/bottom taper,
-// using one continuous blend per band instead of stacked strips (this removes the banding)
 static void drawFogEdgeBand(float x, float w){
     float topY = fog_top_gap;
     float bottomY = s_height - fog_bottom_gap;

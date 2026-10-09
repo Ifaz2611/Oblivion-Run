@@ -14,7 +14,6 @@ void setplayerstate(GS* gs){
         newanim = player_die;
         newstate = dead_player;
     }else if(p->invultimer>0.0f && gs->current_player_anim_name==player_hurt && !gs->player_animations[gs->current_player_anim_name].isfinished){
-        // jokhon kono animation emne cholte thakbe shesh na howa porjonto tokhon eivabe korte hobe
         newanim = player_hurt;
         newstate = hurting_player;
     }else if(p->isdashing){
@@ -78,9 +77,6 @@ void drawPlayerSprite(GS* gs){
     DrawTexturePro(a->tex, source, dest, (Vector2){0,0}, 0.0f, (gs->current_player_state == hurting_player)?RED:WHITE);
 }
 
-// ---- combined keyboard + on-screen button input ----
-// Move: A/D or LEFT/RIGHT arrows. Jump: SPACE or UP/W.
-// Dash: LEFT/RIGHT SHIFT. Attack: LEFT CLICK or DOWN/X/J.
 Rectangle getTouchBtnRect(touchbtn b){
     float s = 100.0f;
     float y = (float)GetScreenHeight() - s - 30.0f;
@@ -185,7 +181,6 @@ static bool dashPressedNow(GS* gs){
 }
 
 static bool attackPressedNow(GS* gs){
-    // mouse clicks on the on-screen buttons must not count as attack clicks
     bool mouseAtk = IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !isMouseOnAnyTouchBtn();
     return mouseAtk || IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_X) || IsKeyPressed(KEY_J) || touchEdge(gs, TB_ATTACK) || gamepadAttackPressed();
 }
@@ -296,8 +291,6 @@ void playerMovement(GS* gs,anim* anim,float dt){
         gs->player.position = (Vector2)Vector2Add(gs->player.position,Vector2Scale(gs->player.velocity,dt));
         return;
     }
-
-    //check button input (keyboard + on-screen buttons)
     if(moveRightHeld(gs) && gs->player.isgrounded){
 
         if(gs->player.isattacking) gs->player.velocity.x = pAttackMoveSpeed;
@@ -323,8 +316,6 @@ void playerMovement(GS* gs,anim* anim,float dt){
 
     else{ 
         gs->player.velocity.x=0;
-        // if(gs->player.isgrounded && !gs->player.isattacking) setAnimation(gs,player_idle);
-        // else if(!gs->player.isgrounded && !gs->player.isattacking)setAnimation(gs,player_jump);
     }
 
 
@@ -333,8 +324,6 @@ void playerMovement(GS* gs,anim* anim,float dt){
         gs->player.velocity.y = -jumpSpeed;
         gs->player.isgrounded = false; 
     }
-
-    //update the player postion after taking input
     gs->player.position = (Vector2) Vector2Add(gs->player.position,Vector2Scale(gs->player.velocity,dt));
 
 }
@@ -346,19 +335,16 @@ void checkHealthPickup(GS* gs){
     Rectangle playerRect = getPlayerRect(gs);
 
     for(int i = 0; i < MaxChunkNum; i++){
-        // item jodi thake and seta pick na kora hoye thake tobe 
         if(gs->gchunk[i].hasHealthItem && !gs->gchunk[i].healthItemCollected){
             if(CheckCollisionRecs(playerRect, gs->gchunk[i].healthItemRect)){
-                gs->player.health += 25.0f; // health joyp kore barate chai 
+                gs->player.health += 25.0f; 
                 
-                // max health theke besi houya jabe na tai 
-                //max er theke besi hote laglei max ei rakhbo 
+
                 PlaySound(gs->audio.health_pickup);
                 if(gs->player.health > gs->player.maxHealth){
                     gs->player.health = gs->player.maxHealth;
                 }
-
-                gs->gchunk[i].healthItemCollected = true; // ekbar pick korle oita r dekha jabe na 
+                gs->gchunk[i].healthItemCollected = true; 
                 spawn_health_update(gs,25);
             }
 
@@ -368,7 +354,7 @@ void checkHealthPickup(GS* gs){
 Rectangle getHeadCheckRec(GS* gs){
     Rectangle body = getPlayerRect(gs);
     return (Rectangle){
-        .x = body.x + body.width*0.2f,   // inset from the corners so shoulder-clipping a ledge corner doesn't false-trigger
+        .x = body.x + body.width*0.2f,
         .y = body.y - 4.0f,
         .width = body.width*0.6f,
         .height = 4.0f
@@ -379,7 +365,7 @@ Rectangle getLeftCheckRec(GS* gs){
     Rectangle body = getPlayerRect(gs);
     return (Rectangle){
         .x = body.x - 8.0f,
-        .y = body.y + 6.0f,              // inset top/bottom so it doesn't catch the floor or a ceiling
+        .y = body.y + 6.0f,           
         .width = 8.0f,
         .height = body.height - 12.0f
     };
@@ -395,7 +381,7 @@ Rectangle getRightCheckRec(GS* gs){
     };
 }
 void checkCeilingCollision(GS* gs){
-    if(gs->player.velocity.y >= 0) return;   // only relevant while moving upward
+    if(gs->player.velocity.y >= 0) return;   
     Rectangle headRect = getHeadCheckRec(gs);
     for(int i=0;i<MaxChunkNum;i++){
         Rectangle chunk = gs->gchunk[i].groundChunkRect;

@@ -24,7 +24,7 @@ void drawHealthUI(GS* gs){
 
 
     const char* heroname = TextFormat("%s", gs->playerName); 
-    //shadow
+ 
     DrawTextEx(gs->cfonts.menu_font3, heroname, (Vector2){posX + 3, posY + 3}, 60, 0, Fade(BLACK, 0.6f)); 
 
     DrawTextEx(gs->cfonts.menu_font3, heroname, (Vector2){posX, posY}, 60, 0, GOLD); 
@@ -57,12 +57,11 @@ void drawHealthUI(GS* gs){
 
 void damagePlayer(GS* gs,float amount){
     Player* p = &gs->player;
-    if(gs->godmode) return; // hidden cheat: infinite health, no damage taken
+    if(gs->godmode) return; 
     if(p->isDead || p->invultimer>0) return;
     p->health-=amount;
     spawn_health_update(gs,-amount);
     p->invultimer = player_invul_time;
-    // impact feedback for every player hit (bombs, enemies, spikes, gas)
     triggerScreenShake(gs, SHAKE_HURT_DURATION, SHAKE_HURT_MAGNITUDE);
     triggerHitStop(gs, HITSTOP_HURT_DURATION);
 
@@ -99,7 +98,6 @@ void spawn_health_update(GS* gs,int amount){
             
             gs->floatTexts[t].position =(Vector2){playerRect.x,playerRect.y-30.0f};
             gs->floatTexts[t].timer=1.5f;
-            //1.5 ssec er jonno screen ee tahkbe 
             gs->floatTexts[t].maxTime=1.5f;
             char show[40];
             sprintf(show,"%+d %s",amount, "HP");
@@ -151,7 +149,7 @@ void drawHealthDrops(GS* gs, tex* textures){
         if(!d->active) continue;
 
         Rectangle source = {0, 0, textures->health_item.width, textures->health_item.height};
-        float floatOffset = 3.0f*sinf(GetTime()*6.0f)*8.0f;   // same bob effect as your ground health items
+        float floatOffset = 3.0f*sinf(GetTime()*6.0f)*8.0f; 
 
         Rectangle dest = {
             .x = d->rect.x,

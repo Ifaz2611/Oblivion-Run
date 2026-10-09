@@ -44,7 +44,7 @@ void drawExplosions(GS* gs, tex* textures){
             .height = frameH
         };
         Rectangle dest = {
-            .x = e->position.x - drawW/2.0f,   // centered on the explosion point
+            .x = e->position.x - drawW/2.0f,  
             .y = e->position.y - drawH/2.0f,
             .width = drawW,
             .height = drawH

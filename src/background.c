@@ -44,7 +44,7 @@ void drawBackgroundMenu(GS* gs){
         for(int t = 0; t < tilesNeeded; t++){
             Rectangle dest = {
                 .x = startX + t * texWidth,
-                .y = (i == BG_LAYER_COUNT-1) ? s_height - texHeight : 0, // menu-te ground chunk nei, tai screen bottom use korlam
+                .y = (i == BG_LAYER_COUNT-1) ? s_height - texHeight : 0, 
                 .width  = texWidth,
                 .height = texHeight
             };

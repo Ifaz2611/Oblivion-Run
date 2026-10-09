@@ -28,7 +28,7 @@
     void groundedCheck(GS* gs){
         Player* p = &gs->player;
         bool wasGrounded = p->isgrounded;
-        float fallSpeed  = p->velocity.y;   // capture before the loop zeroes it out on landing
+        float fallSpeed  = p->velocity.y;   
 
         p->isgrounded = false;
         for(int i = 0; i < MaxChunkNum; i++){
@@ -46,7 +46,7 @@
     }
     void pushgroundchunk(GS *gs,float x,float y,float height,float width,bool has_health_item)
     {
-        (void)has_health_item; // health items are attached via spawn_healthrect into their own slots
+        (void)has_health_item; 
         int index = gs->chunk_index;
 
         gs->gchunk[index].groundChunkRect =
@@ -57,8 +57,6 @@
                 .height = height
             };
 
-        // Clear stale pickup state from this ring slot so old health items
-        // can't haunt newly spawned ground.
         gs->gchunk[index].hasHealthItem = false;
         gs->gchunk[index].healthItemCollected = false;
         gs->gchunk[index].healthItemRect = (Rectangle){0,0,0,0};
@@ -68,8 +66,6 @@
     }
 
     void spawn_healthrect(GS* gs,float x,float y,float width){
-        // Claim a dedicated ring slot (no ground rect) so this pickup can
-        // never be overwritten by — or leak onto — an unrelated ground chunk.
         int index = gs->chunk_index;
 
         gs->gchunk[index].groundChunkRect = (Rectangle){0,0,0,0};
@@ -140,8 +136,6 @@
 
                 float diff = getDifficultyFactor(gs);
                 
-                // Safe-ground gaps between patterns: easy runs get longer
-                // breathers, hard runs get tighter chains. MEDIUM == legacy.
                 int minGap, maxGap;
                 if(gs->difficulty == DIFF_EASY){
                     minGap = (int)(2000 - 600*diff);
@@ -226,9 +220,9 @@
             DrawTexturePro(textures->bomb_sprite, source, dest, (Vector2){0,0}, 0.0f, WHITE);
 
             if (gs->bombs[i].armed) {
-                float t = 1.0f - (gs->bombs[i].fuseTimer / bomb_fuse_time);  // 0 at arm, 1 near detonation
-                float pulseSpeed = 8.0f + t * 20.0f;                        // pulses faster as fuse runs out
-                float pulse = (sinf((float)GetTime() * pulseSpeed) + 1.0f) / 2.0f;  // 0..1
+                float t = 1.0f - (gs->bombs[i].fuseTimer / bomb_fuse_time);  
+                float pulseSpeed = 8.0f + t * 20.0f;                        
+                float pulse = (sinf((float)GetTime() * pulseSpeed) + 1.0f) / 2.0f; 
                 unsigned char alpha = (unsigned char)(pulse * 200);
 
                 BeginBlendMode(BLEND_ADDITIVE);
