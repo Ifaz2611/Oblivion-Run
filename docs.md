@@ -1,7 +1,11 @@
-# Oblivion Run — Complete Game Documentation (`docs.md`)
+# Oblivion Run — Technical Guide
 
 > 2D action-platformer / endless-runner in **C + raylib**. File: `src/main.c` → `build/main.exe`.
-> Window: `1920x1080 @ 60 FPS`, `FLAG_WINDOW_RESIZABLE | FLAG_VSYNC_HINT`.
+> Windows build, resizable 16:9 window, 60 FPS target. The initial window size is adapted to the current display.
+
+For installation and a first build, see [`getstart.md`](getstart.md). Community
+contribution and reporting guidance is in [`CONTRIBUTING.md`](CONTRIBUTING.md)
+and [`SECURITY.md`](SECURITY.md).
 
 ---
 
@@ -9,8 +13,8 @@
 
 You run automatically to the right through a procedurally generated haunted forest (**OBLIVION RUN**). You:
 
-1. Pick a hero name.
-2. (Optionally) watch the 10-page story + controls tutorial.
+1. Choose a difficulty and pick a hero name.
+2. Watch the 10-page story + controls tutorial, or skip it.
 3. Run / jump / dash / melee-attack endlessly while:
    - skeleton enemies chase and swing at you,
    - spikes and proximity bombs hurt you,
@@ -26,24 +30,23 @@ There is no win condition — it is a survival high-score game. Difficulty ramps
 ## 2. Run / build
 
 ### Requirements
-- Windows 10+, MinGW GCC on PATH, bundled raylib in `third_party/raylib/`, VS Code + C/C++ extension (recommended).
+- Windows 10+, 64-bit MinGW-w64 GCC on `PATH`, and the bundled raylib in `third_party/raylib/`. VS Code + the C/C++ extension are optional.
 
-### VS Code (canonical)
-- Build task: `.vscode/tasks.json` → `Build Raylib App` (default build task):
-  `C:/Users/zahin/AppData/Local/Microsoft/WinGet/Packages/BrechtSanders.WinLibs.POSIX.UCRT_Microsoft.Winget.Source_8wekyb3d8bbwe/mingw64/bin/gcc.exe -g src/main.c src/game.c src/score.c src/explosion.c src/tutorial.c src/sound.c src/player.c src/enemy.c src/ground.c src/pattern.c src/background.c src/camera.c src/texture.c src/animation.c src/health.c src/combat.c -Isrc -Iinclude -Ithird_party/raylib/include -Lthird_party/raylib/lib -lraylib -lopengl32 -lgdi32 -lwinmm -Wall -Wextra -o build/main.exe`
-- Debug: `.vscode/launch.json` → `Debug Raylib App` (cppdbg + gdb, `preLaunchTask: Build Raylib App`, `program: ${workspaceFolder}/build/main.exe`, `cwd: ${workspaceFolder}`).
-- Run with `F5` while `src/main.c` is open. **Must launch from workspace root** — asset paths (`assets/...`) and `data/highscore.txt` are relative to CWD.
+### VS Code
+- `.vscode/tasks.json` provides the `Build Raylib App` task and `.vscode/launch.json` provides `Debug Raylib App`.
+- The checked-in task and debugger contain an absolute compiler/debugger path from the original development machine. Update those paths for your MinGW installation before using them elsewhere, or build from the CLI.
+- Run/debug with the repository root as the working directory. Asset paths (`assets/...`) and `data/highscore.txt` are relative to it.
 
 ### CLI equivalent
-```bash
+```powershell
+New-Item -ItemType Directory -Force build | Out-Null
 gcc.exe -g src/main.c src/game.c src/score.c src/explosion.c src/tutorial.c src/sound.c src/player.c src/enemy.c src/ground.c src/pattern.c src/background.c src/camera.c src/texture.c src/animation.c src/health.c src/combat.c -Isrc -Iinclude -Ithird_party/raylib/include -Lthird_party/raylib/lib -lraylib -lopengl32 -lgdi32 -lwinmm -Wall -Wextra -o build/main.exe
-./build/main.exe
+.\build\main.exe
 ```
 
 ### Display auto-logic (`src/main.c:20-29`)
-- `monitor = GetCurrentMonitor()`, `mw/mh = GetMonitorWidth/Height()`.
-- If `mw <= 1920 && mh <= 1080` → `ToggleBorderlessWindowed()` (fills 1080p-or-smaller screens exactly).
-- Else → centered `1920x1080` window via `SetWindowPosition()`.
+- Starts with a resizable, vsynced 1280×720 window and targets 60 FPS.
+- Uses the current monitor size to choose and center a 16:9 window, capped at 1920px wide and constrained by the available display height. The minimum window size is 960×540.
 
 ---
 
@@ -101,13 +104,13 @@ Everything lives in one `GS gs = {0}` created in `main()`:
 | Ground | `gchunk[50]`, `next_spawn_point`, `chunk_index` (ring), `lastPatternEndX`, `gapBetweenTheNextPattern` |
 | BG | `bgLayers[6]: parallax_layer{tex, scrollfactor, offsetX, source}` |
 | Enemies | `enemy[100]` |
-| Menu | `menu_selection 0..2`, `quit_game`, `playerName[25]`, `nameLetterCount`, `logo` |
+| Menu | `menu_selection 0..3`, `difficulty_selection`, `quit_game`, `playerName[25]`, `nameLetterCount`, `logo` |
 | Pgas/fog | `pgas: poison_gas`, `fogpuffs[25]` |
 | Combat FX | `bombs[20]+bomb_index`, `explosions[20]+explosion_index`, `healthDrops[20]+healthDrop_index`, `spikes[30]+spike_index+spike_cooldown`, `floatTexts[10]` |
 | Score | `distance_traveled`, `score (= distance*0.0025 + bonusScore)`, `bonusScore` (kill bonuses), `highScores[5]`, `isNewHighScore`, `timer` (game-over delay) |
 | Flow | `starting_timer (1.0 intro auto-run)`, `show_tutorial`, `pressed_how_to_play`, `skip_duration (2.0)`, `skip_pressed_timer`, `tutorial_page/charsShown/charTimer/alpha/state` |
 | Decor | `bushDecor[400]+bushDecor_index+last_bush_x`, `detailDecor[200]+detail_index`, `draw_gap` |
-| Misc | `cfonts{menu_font1,2,3}`, `audio: audio`, `is_game_over`, `play_walking_sound` |
+| Misc | `cfonts{menu_font1,2,3}`, `audio: audio`, touch-button state, `is_game_over`, `play_walking_sound` |
 
 Key sub-structs:
 - `Player`: `position` (sprite top-left), `velocity`, `initial_position`, `width/height` (tight hitbox, not sprite), `collisionOffset`, `isgrounded`, `facing_left`, `isdashing/dashduration/dashcooldowntimer`, `isattacking/hitduration/hashitthiswing`, `invultimer`, `health/maxHealth/isDead`, `prevBottom`.
@@ -127,16 +130,16 @@ Player state ordering matters: `idle < running < jumping < attacking < dashing <
 Per frame:
 1. `dt = min(GetFrameTime(), 1/30s)`.
 2. `updateGame(&gs,&anim,dt)` — dispatches by `currentscreen`, including `PAUSED`; gameplay updates stop while paused.
-3. `updateMusic(&gs)` — `UpdateMusicStream(menuMusic); UpdateMusicStream(gameMusic);` every frame (required by raylib).
+3. `updateMusic(&gs)` — updates each music stream that is currently playing (required by raylib).
 4. `BeginDrawing(); ClearBackground(RAYWHITE);` then:
-   - `MENU → drawMenu`, `NAME_ENTRY → drawNameEntry`, `TUTORIAL → drawTutorial`,
+   - `MENU → drawMenu`, `DIFFICULTY → drawDifficultySelect`, `NAME_ENTRY → drawNameEntry`, `TUTORIAL → drawTutorial`,
    - `GAME/PAUSED → BeginMode2D(camera); drawGame(); EndMode2D(); HUD; pause overlay if needed`,
    - `GAMEOVER → drawGameover`, `CREDITS → drawCredits`.
 5. `EndDrawing()`.
 6. On exit: `unloadTexture, unloadAudio, CloseAudioDevice, CloseWindow`. Enemy animation
    structs borrow the shared enemy textures, so only the texture owner unloads them.
 
-Init (`initGame`, `src/game.c`): crosshair cursor, `loadTexture`, `logo = LoadTexture("assets/PNG/Logo.png")`, `loadAnimation`, `loadHighScores`, `currentscreen=MENU`, menu music play, player sized at `scale = 3.0*1.6 = 4.8` (`width = 17*scale`, `height = 32*scale`, `collisionOffset = {30*scale, 16*scale}`, `pos = {(80*scale)/2+200, ground_y-48*scale}`, `velocity.x=300`), camera `offset={s_width/2-200,0}, zoom=1`, health `100/100`, world `next_spawn_point=-s_width`, scrollfactors `{0.1,0.25,0.45,0.65,0.85,0.95}`, 100 enemies pre-loaded inactive, pgas at `{-800, ground_y-h+50}`, `starting_timer=1.0`.
+Init (`initGame`, `src/game.c`) loads textures, animations, high scores, and audio; starts on the menu with Medium selected; initializes the player, camera, world, enemy pool, and poison fog. `main.c` sizes and centers a resizable window to fit the current display while preserving a 16:9 aspect ratio and a minimum size of 960×540.
 
 ---
 
@@ -149,8 +152,12 @@ Init (`initGame`, `src/game.c`): crosshair cursor, `loadTexture`, `logo = LoadTe
 - Activate: `0 → DIFFICULTY`, `1 → TUTORIAL with pressed_how_to_play=true`, `2 → CREDITS`, `3 → quit_game=true`.
 - Draw: `drawBackgroundMenu()` + `0x000000AA` dim, 3 demo sprites (player air_attack frame2, enemy_hurt frame2 flipped, enemy_attack frame5), tiled ground strip at `player_posy+270`, `0x00000022` overlay, logo + shadow at top-center, 4 labels (selected = `"> LABEL <"` white, else dark gray).
 
+### DIFFICULTY
+- Opens after selecting `START GAME`; choose Easy, Medium, or Hard with arrow keys / `WASD`, mouse, or gamepad, then confirm to enter name entry.
+- The selected profile changes player maximum health and enemy, spike, bomb, and poison-fog damage and pacing. Medium uses the baseline tuning.
+
 ### NAME_ENTRY
-- Typing: `GetCharPressed()` loop, accept ASCII `32..125` while `count < 24`, `PlaySound(typing)` per char, null-terminate. `BACKSPACE` deletes (`menu_select`). `ENTER` with `count>0` → `menu_click`, `restartGame()`, stop menu music / play game music, go to `TUTORIAL` if `show_tutorial` else `GAME`.
+- Typing: `GetCharPressed()` loop, accept ASCII `32..125` while `count < 24`, `PlaySound(typing)` per char, null-terminate. `BACKSPACE` deletes (`menu_select`). `ENTER` with `count>0` → `menu_click`, `restartGame()`, stop menu music, go to `TUTORIAL` if `show_tutorial` else `GAME`. Gameplay currently uses sound effects without background music.
 - Draw: dimmed menu BG, centered `600x300` box, player idle sprite above box (`*1.6`), `"ENTER YOUR HERO NAME"` gold 30, input box `Fade(LIGHTGRAY,.6)`, name drawn in box (font3 40 black) + yellow copy above player, blinking `" _"` cursor, `"Press ENTER to Begin"` hint.
 
 ### TUTORIAL (`src/tutorial.c`, 10 pages, typewriter)
@@ -167,7 +174,7 @@ Gameplay simulation is stopped; the world and HUD remain visible beneath the pau
 Player attacks hit one overlapping enemy per swing (the nearest to the active hitbox center). Resizing the window height shifts active world objects with the ground line and preserves bottom-anchored ground.
 
 ### GAMEOVER
-- Trigger (`isGameover`): when `player.isDead && die anim isfinished`: `timer += dt` to `1.0s`, then stop game music / play menu music, `currentscreen=GAMEOVER`, `isNewHighScore = tryAddHighScore(...)`, `PlaySound(gameOverSting)`.
+- Trigger (`isGameover`): when `player.isDead && die anim isfinished`: `timer += dt` to `1.0s`, then `currentscreen=GAMEOVER`, `isNewHighScore = tryAddHighScore(...)`, `PlaySound(gameOverSting)`.
 - Falling off world also kills: `player_has_fallen` if `playerRect.y >= ground_y + height/2` → `die` sound + `isDead=true`.
 - Draw: menu BG + `Fade(BLACK,.8)`, die frame 3 `*1.8`, `"GAME OVER"` red 80, score + `"New High Score!"` + top-5 list, blinking `"Press ENTER to return to Menu"`. `ENTER → MENU`.
 
@@ -200,7 +207,7 @@ floating texts rise/fade | enemyFootstepUpdate | isGameover
 
 ## 8. Player (`src/player.c`, `include/constants.h`)
 
-Controls: `A/D` or `←/→` move, `SPACE`/`UP`/`W` jump, `LEFT/RIGHT_SHIFT` dash (grounded only), `LEFT_MOUSE`/`DOWN`/`X`/`J` attack. Gamepad (pad 0): left-stick/D-pad move, `A` jump, `RB`/`B` dash, `X`/`RT`/`LT` attack, `START` pause. Menus/pause/gameover/tutorial-advance also accept gamepad `A` (confirm), `B` (back), D-pad.
+Controls: `A/D` or `←/→` move, `SPACE`/`UP`/`W` jump, `LEFT/RIGHT_SHIFT` dash (grounded only), `LEFT_MOUSE`/`DOWN`/`X`/`J` attack. Gamepad (pad 0): left-stick/D-pad move, `A` jump, right bumper dash, `X`/`RT`/`LT` attack, `START` pause. Menus/pause/gameover/tutorial-advance also accept gamepad confirm/back and D-pad. Gameplay draws on-screen controls for touch.
 
 - Rects: `getPlayerRect() = {pos + collisionOffset, width, height}` (tight). Attack reach: 60px frontal slab `getplayerhitbox()`. Ceiling probe: top strip; wall probes: 8px side strips; ground probe: `{x+w/4, y+h, w/2, 2}`.
 - `Gravity`: `velocity.y += 1400*dt`.
@@ -217,7 +224,7 @@ Controls: `A/D` or `←/→` move, `SPACE`/`UP`/`W` jump, `LEFT/RIGHT_SHIFT` das
 - Collisions: `checkCeilingCollision` (head bump → `vy=0`, snap below), `checkWallCollision` (skip `w<=0` chunks and standing-on-top case via `prevBottom`; push out + `vx=0`), `restrict_left_movement` (`pos.x >= camera.target.x - s_width/2`), `groundedCheck` (snap to chunk top, `vy=0`; landing sound if `fallSpeed>50`).
 - `checkHealthPickup`: platform health rects → `+25 clamp 100`, `health_pickup` sound, gold `+25 HP` float text.
 
-Tuning: `pSpeed 1000, pAttackMoveSpeed 700, pSpeedAir 750, jumpSpeed 700, gravity 1400, dash 2200/0.45s/0.6cd, attack 0.54s (air 0.56s), SPRITE_SCALE 3.0 (player ×1.6 → 4.8), real hitbox 17×32`.
+Tuning: `pSpeed 1000, pAttackMoveSpeed 700, pSpeedAir 750, jumpSpeed 700, gravity 1400, dash 2200/0.45s/0.6cd, attack 0.54s (air 0.56s), SPRITE_SCALE 3.0 (player ×1.6 → 4.8), real hitbox 17×32`. Player maximum health and hazard/enemy damage vary by selected difficulty.
 
 ---
 
@@ -273,8 +280,8 @@ Two parametrized kinds, no new structs: normal (100 pts, 1x HP/speed/damage) and
 - Camera (`camera.c`): intro lock `target={0,0}` while `starting_timer>0`; else one-way: if `playerCenterX > target.x+450` → `target.x = center-450`. Never moves left/down/up. `restrict_left_movement` keeps player inside left edge. `triggerScreenShake`/`triggerHitStop`/`updateScreenShake` own the impact feedback (decaying random `shakeOffset`, stronger shake wins).
 - Background (`background.c`): 6 layers `BACKGROUND, WOODSFi, WOODSSe, WOODSTh, WOODSFo, BUSH_BACKGROUND` with scrollfactors `0.1…0.95`, `BG_SCALE 3.9`, tiled via `fmod(offsetX)`. World version offsets by `camera.target.x - camera.offset.x`, bottom layer pinned to `s_height-texH` and tinted `GRAY`; menu version is screen-space, all `WHITE`.
 - Animation (`animation.c`): generic `updateAnimation` (skip if `!timedependent`; advance on `frameduration`; loop or clamp + `isfinished`). Player table: idle 1f/0.1 loop, run 8f/0.08 loop, jump 2f manual, dash 4f/0.08 once (sheet sliced `/6` — mismatch), attack `GroundCombo3` sliced `/14` but plays 9f/0.06 loop, air `AirCombo2` 7f/0.08 loop, die 4f/0.08 once, hurt uses **uninitialized `tex->hurt` (bug: zero-size)** 1f/2.0s once. Pgas cycles 12 frames every `0.08s`.
-- Audio (`sound.c`): `load_audio` maps `assets/music/*.mp3|wav` → `menuMusic(menu_background_music, loop)`, `gameMusic(game_music1.wav, loop, vol .4, pitch .6)`, SFX `hurt/die(pitch1.2)/enemy_die/hit(=enemy_hurt)/jump(pitch1.2)/landing/dash/swing/player_swing/enemy_swing/running(.5)/enemy_run/health_pickup/explosion/menu_click/menu_select/typing`. Must call `updateMusic`每frame. Footsteps: player `running.mp3` every `0.35s` while grounded+fast; enemies same interval while walking. `unloadAudio` only frees 2 musics + 4 sounds (leaks rest).
-- Textures (`texture.c`): `LoadPixelTexture` = `LoadTexture + POINT filter`. Fonts: `Pixelmania→font1, StayPixelDEMO→font2, BoldPixels→font3` (`LoadFontEx size 200`). **Two absolute paths break on other machines:** `D:\programming\raylib_practise\assets\PNG\enemy_health_drop.png` and `...platform health.png` (with space). Backslash/space filenames elsewhere are Windows-ok but fragile.
+- Audio (`sound.c`): `load_audio` loads menu and game music streams plus sound effects from `assets/music/`. `updateMusic` updates streams only while they are playing; the menu track plays on the title screen, while the run currently uses sound effects without background music. Footsteps play while the player is grounded and moving or enemies are walking. `unloadAudio` releases the loaded streams and sounds.
+- Textures (`texture.c`): `LoadPixelTexture` calls `LoadTexture` and applies point filtering. Asset paths, including the enemy health drop and platform health textures, are relative to the repository root. Fonts: `Pixelmania→font1, StayPixelDEMO→font2, BoldPixels→font3` (`LoadFontEx size 200`).
 
 ---
 
@@ -282,25 +289,23 @@ Two parametrized kinds, no new structs: normal (100 pts, 1x HP/speed/damage) and
 
 | Input | Context | Effect |
 |---|---|---|
-| `D / A` | Game, grounded | Move ±1000 (700 while attacking), or left-stick / D-pad on gamepad |
-| `D / A` | Game, air | Move ±750 (gamepad stick works too) |
-| `SPACE` | Game, grounded | Jump `vy=-700` (gamepad `A` too) |
-| `LEFT_SHIFT` | Game, grounded, `cd<=0` | Dash `±2200 + vy=-350`, 0.45s, cd 0.6s (gamepad `RB`/`B` too) |
-| `LEFT_CLICK` | Game | Melee (0.54s ground / 0.56s air, hits frames 3–6, 30 dmg, 60px reach; gamepad `X`/`RT`/`LT` too) |
-| `ESC` | Game / paused | Open pause menu / resume (gamepad `START` pauses, `A` confirms, `B` backs) |
+| `D / A` or `← / →` | Game | Move on the ground or in the air; left stick and D-pad also work |
+| `SPACE / W / ↑` | Game | Jump (gamepad `A`, touch button) |
+| `LEFT / RIGHT_SHIFT` | Game, grounded | Dash (gamepad right bumper, touch button) |
+| `LEFT_CLICK / DOWN / X / J` | Game | Melee attack (gamepad `X` / `RT` / `LT`, touch button) |
+| `ESC` | Game / paused | Open pause menu / resume (gamepad `START` pauses) |
 | `ENTER / SPACE` | Tutorial | Complete typing / next page |
 | Hold `ENTER 2s` | Tutorial pre-game | Skip to GAME |
 | Type + `BACKSPACE` + `ENTER` | Name entry | 24-char name → start |
-| `↑/W ↓/S + ENTER`, mouse | Menu | Navigate START/TUTORIAL/EXIT |
+| `↑/W ↓/S + ENTER`, mouse | Menu | Navigate and select menu items; gamepad is supported |
 | `ENTER` | Gameover | Back to MENU |
 
 ---
 
-## 14. Known bugs / fragility (do not "fix" silently)
+## 14. Implementation notes
 
-1. Dash sheet sizing and ground-attack sheet slicing still need a visual audit in `animation.c`.
+1. Screen enum values are non-sequential (`TUTORIAL=4, GAMEOVER=3`); use named enum values rather than assuming screen order.
 2. Asset paths and high-score storage are relative; launch from the repository root so `assets/...` and `data/highscore.txt` resolve.
-3. `gamescreen` numeric values are non-sequential (`TUTORIAL=4, GAMEOVER=3`); switch statements handle them explicitly.
 
 ---
 
@@ -322,7 +327,7 @@ Two parametrized kinds, no new structs: normal (100 pts, 1x HP/speed/damage) and
 | `pattern.c` | Tilemap definitions + rasterizer |
 | `background.c` | Parallax tiling |
 | `camera.c` | Deadzone follow + screen-shake / hit-stop triggers |
-| `texture.c` | Loading (see bug §14) |
+| `texture.c` | Relative asset and font loading |
 | `animation.c` | Frame tables + stepper |
 | `types.h` | Structs/enums/`GS` |
 | `constants.h` | Tuning (see §8–§11 for values) |

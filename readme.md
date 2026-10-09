@@ -1,92 +1,80 @@
 # Oblivion Run
 
-Oblivion Run is a 2D action-platformer and endless survival game built in C with raylib. It is a fast, arcade-style game where the player keeps running through a haunted forest, fights enemies, avoids hazards, and tries to survive as long as possible for a high score.
+> **Run from the dark. Fight what follows.**
+>
+> A pixel-art action platformer and endless survival game built with C and
+> [raylib](https://www.raylib.com/). Survive a haunted forest, defeat its
+> creatures, and push your high score further with every run.
 
-This repository is not a game engine or a library. It is a complete playable game project that includes source code, assets, sound, build configuration, and a Windows-focused setup for running it locally.
+<p align="center">
+  <img src="assets/PNG/Logo.png" alt="Oblivion Run" width="480">
+</p>
 
-## What is this project about?
+## The run
 
-You wake up in a dark forest and must survive an endless run through the ruins of a cursed world. The character automatically moves forward, and the player must:
+Choose a difficulty, name your hero, and head into an endless side-scrolling
+forest. Skeletons, spikes, bombs, gaps, and pursuing poison fog all stand
+between you and a new record. Jump, dash, and fight to stay alive.
 
-- jump over gaps and hazards
-- dash to escape danger
-- attack enemies with melee strikes
-- collect health pickups
-- avoid poison fog, bombs, spikes, and pursuing skeletons
-- survive as long as possible to beat the high score
+**Highlights**
 
-The game includes a title screen, player name entry, tutorial flow, gameplay loop, and game-over / score screen.
+- Fast-paced platforming with melee combat and a dash
+- Skeleton enemies, multiple hazards, and health pickups
+- Easy, Medium, and Hard difficulty options
+- Procedurally assembled terrain with difficulty that increases over time
+- Local top-five high scores
+- Keyboard, gamepad, and on-screen touch controls
 
-## Core features
+## Play
 
-- Side-scrolling endless-runner gameplay
-- 2D combat with melee attacks and dashing
-- Enemy AI and varied hazards
-- Health and score systems
-- Difficulty scaling over time
-- High-score saving to `data/highscore.txt`
-- Built-in tutorial and game flow screens
-- Lightweight C + raylib rendering and audio
+**Requirements:** Windows 10 or later, 64-bit MinGW-w64 GCC on `PATH`, and the
+raylib files bundled in `third_party/raylib/`. VS Code is optional.
+
+Open PowerShell in the repository root, then build and run:
+
+```powershell
+New-Item -ItemType Directory -Force build | Out-Null
+gcc.exe -g src/main.c src/game.c src/score.c src/explosion.c src/tutorial.c src/sound.c src/player.c src/enemy.c src/ground.c src/pattern.c src/background.c src/camera.c src/texture.c src/animation.c src/health.c src/combat.c -Isrc -Iinclude -Ithird_party/raylib/include -Lthird_party/raylib/lib -lraylib -lopengl32 -lgdi32 -lwinmm -Wall -Wextra -o build/main.exe
+.\build\main.exe
+```
+
+Run the game from the repository root so it can find its assets and save scores.
+The bundled VS Code build/debug configuration contains a local toolchain path;
+on another machine, update that path to your MinGW installation or use the
+command above. See **[Getting started](getstart.md)** for setup and
+troubleshooting.
 
 ## Controls
 
-- A / D or Left / Right: move
-- Space: jump
-- Left Shift: dash
-- Left Mouse Click: attack
-- Enter: confirm selections and continue
+| Action | Keyboard / mouse | Gamepad |
+| --- | --- | --- |
+| Move | `A` / `D` or `←` / `→` | Left stick or D-pad |
+| Jump | `Space`, `W`, or `↑` | `A` |
+| Dash | `Left Shift` or `Right Shift` | `RB` |
+| Attack | Left mouse, `Down`, `X`, or `J` | `X`, `LT`, or `RT` |
+| Pause / back | `Esc` | `Start` / `B` |
 
-## Requirements
+On-screen controls are also available for touch input. Menus can be navigated
+with `W` / `S` or the arrow keys and confirmed with `Enter` / `Space`; mouse and
+gamepad input are supported too.
 
-- Windows 10 or later
-- MinGW / GCC installed and available on PATH
-- VS Code recommended for building/debugging
-- Raylib files are already included in `third_party/raylib`
+## Project map
 
-## Quick start
+| Path | Contents |
+| --- | --- |
+| `src/` | Game loop, screens, player, enemies, world generation, combat, and audio |
+| `include/` | Shared game state, types, and tuning constants |
+| `assets/` | Sprites, backgrounds, fonts, and sound |
+| `data/` | Local high-score storage |
+| `third_party/raylib/` | Bundled raylib headers and libraries |
+| `.vscode/` | VS Code build and debug configuration |
 
-1. Open the project folder in VS Code.
-2. Make sure your compiler is installed and available in PATH.
-3. Use the default VS Code task: `Build Raylib App`.
-4. Press `F5` to run, or launch the generated executable from `build/main.exe`.
+The technical overview is in **[docs.md](docs.md)**. To help improve the game,
+please read **[CONTRIBUTING.md](CONTRIBUTING.md)** and the
+**[Code of Conduct](CODE_OF_CONDUCT.md)**. For vulnerability reports, see
+**[SECURITY.md](SECURITY.md)**.
 
-## Build command
+## License
 
-If you prefer to compile from a terminal, run this from the repository root:
-
-```bash
-gcc.exe -g src/main.c src/game.c src/score.c src/explosion.c src/tutorial.c src/sound.c src/player.c src/enemy.c src/ground.c src/pattern.c src/background.c src/camera.c src/texture.c src/animation.c src/health.c src/combat.c -Isrc -Iinclude -Ithird_party/raylib/include -Lthird_party/raylib/lib -lraylib -lopengl32 -lgdi32 -lwinmm -Wall -Wextra -o build/main.exe
-```
-
-Then run:
-
-```bash
-./build/main.exe
-```
-
-## Repository layout
-
-- `src/` - main game code and gameplay systems
-- `include/` - shared headers and state structures
-- `assets/` - sprites, fonts, background images, and sound files
-- `data/` - saved score data
-- `third_party/raylib/` - bundled raylib library headers and binaries
-- `.vscode/` - VS Code build and debug configuration
-- `build/` - compiled game output
-
-## Important notes
-
-- The project is configured for Windows and MinGW.
-- Asset paths are relative to the project root, so run the executable from the repository root or use the VS Code launch setup.
-- The game will open in a window sized for the current display setup, with automatic handling in `src/main.c`.
-
-## Why this repo is useful
-
-This repository is ideal for:
-
-- learning how a small C game is structured
-- studying raylib-based gameplay systems
-- modifying game logic, enemies, UI, or difficulty
-- using as a starting point for a custom 2D action game
-
-For step-by-step setup and troubleshooting, see `getstart.md`.
+See [`license`](license) for the project license. Check individual asset and
+dependency terms before redistributing them.
