@@ -125,26 +125,69 @@ static bool touchEdge(GS* gs, touchbtn b){
     return gs->touchHeld[b] && !gs->touchPrevHeld[b];
 }
 
+static bool gamepadActive(void){
+    return IsGamepadAvailable(0);
+}
+
+static float gamepadMoveAxis(void){
+    if(!gamepadActive()) return 0.0f;
+    float ax = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_X);
+    if(fabsf(ax) < GAMEPAD_DEADZONE) ax = 0.0f;
+    return ax;
+}
+
+static bool gamepadLeftHeld(void){
+    if(!gamepadActive()) return false;
+    if(gamepadMoveAxis() < -GAMEPAD_DEADZONE) return true;
+    return IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT);
+}
+
+static bool gamepadRightHeld(void){
+    if(!gamepadActive()) return false;
+    if(gamepadMoveAxis() > GAMEPAD_DEADZONE) return true;
+    return IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT);
+}
+
+static bool gamepadJumpPressed(void){
+    if(!gamepadActive()) return false;
+    return IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN);
+}
+
+static bool gamepadDashPressed(void){
+    if(!gamepadActive()) return false;
+    return IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_1) ||
+           IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT);
+}
+
+static bool gamepadAttackPressed(void){
+    if(!gamepadActive()) return false;
+    return IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_LEFT) ||
+           IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_2) ||
+           IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_TRIGGER_2);
+}
+
 static bool moveLeftHeld(GS* gs){
-    return IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT) || gs->touchHeld[TB_LEFT];
+    return IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT) || gs->touchHeld[TB_LEFT] || gamepadLeftHeld();
 }
 
 static bool moveRightHeld(GS* gs){
-    return IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT) || gs->touchHeld[TB_RIGHT];
+    return IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT) || gs->touchHeld[TB_RIGHT] || gamepadRightHeld();
 }
 
 static bool jumpPressedNow(GS* gs){
-    return IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W) || touchEdge(gs, TB_JUMP);
+    (void)gs;
+    return IsKeyPressed(KEY_SPACE) || IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W) || touchEdge(gs, TB_JUMP) || gamepadJumpPressed();
 }
 
 static bool dashPressedNow(GS* gs){
-    return IsKeyPressed(KEY_LEFT_SHIFT) || IsKeyPressed(KEY_RIGHT_SHIFT) || touchEdge(gs, TB_DASH);
+    (void)gs;
+    return IsKeyPressed(KEY_LEFT_SHIFT) || IsKeyPressed(KEY_RIGHT_SHIFT) || touchEdge(gs, TB_DASH) || gamepadDashPressed();
 }
 
 static bool attackPressedNow(GS* gs){
     // mouse clicks on the on-screen buttons must not count as attack clicks
     bool mouseAtk = IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && !isMouseOnAnyTouchBtn();
-    return mouseAtk || IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_X) || IsKeyPressed(KEY_J) || touchEdge(gs, TB_ATTACK);
+    return mouseAtk || IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_X) || IsKeyPressed(KEY_J) || touchEdge(gs, TB_ATTACK) || gamepadAttackPressed();
 }
 
 void drawTouchControls(GS* gs){

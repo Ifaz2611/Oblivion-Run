@@ -201,7 +201,12 @@ typedef struct animation{
         float attack_cooldown;
         bool hashitplayerthisswing;
         float invultimer;
-        
+        // parametrized enemy kind (ENEMY_TYPE_*): no new structs, just stats.
+        int type;
+        float speedMult;
+        float dmgMult;
+        float scaleMult;
+        int scoreValue;
     } Enemy;
 
     typedef struct poison_gas{
@@ -355,8 +360,16 @@ typedef struct animation{
         // for adding score elements
         float distance_traveled;
         int score;
+        int bonusScore;   // accumulated enemy-kill bonuses (kept separate so distance never overwrites it)
         HighScoreEntry highScores[MAX_HIGH_SCORES];   
         bool isNewHighScore;
+
+        // screen shake (render-only offset) + hit-stop (brief world freeze)
+        float shakeTime;
+        float shakeDuration;
+        float shakeMagnitude;
+        Vector2 shakeOffset;
+        float hitStopTimer;
 
         //starting camera position
         float starting_timer;

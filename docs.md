@@ -17,7 +17,7 @@ You run automatically to the right through a procedurally generated haunted fore
    - gaps in the ground kill you if you fall,
    - poison-gas fog chases you from the left,
    - health pickups (+25 on platforms, +15 from enemy drops) heal you.
-4. Score = distance traveled. Die → game-over screen with top-5 high scores saved to `data/highscore.txt`.
+4. Score = distance traveled + enemy-kill bonuses (normal +100, brute +250, shown as floating text). Die → game-over screen with top-5 high scores saved to `data/highscore.txt`.
 
 There is no win condition — it is a survival high-score game. Difficulty ramps with distance.
 
@@ -104,17 +104,19 @@ Everything lives in one `GS gs = {0}` created in `main()`:
 | Menu | `menu_selection 0..2`, `quit_game`, `playerName[25]`, `nameLetterCount`, `logo` |
 | Pgas/fog | `pgas: poison_gas`, `fogpuffs[25]` |
 | Combat FX | `bombs[20]+bomb_index`, `explosions[20]+explosion_index`, `healthDrops[20]+healthDrop_index`, `spikes[30]+spike_index+spike_cooldown`, `floatTexts[10]` |
-| Score | `distance_traveled`, `score`, `highScores[5]`, `isNewHighScore`, `timer` (game-over delay) |
+| Score | `distance_traveled`, `score (= distance*0.0025 + bonusScore)`, `bonusScore` (kill bonuses), `highScores[5]`, `isNewHighScore`, `timer` (game-over delay) |
 | Flow | `starting_timer (1.0 intro auto-run)`, `show_tutorial`, `pressed_how_to_play`, `skip_duration (2.0)`, `skip_pressed_timer`, `tutorial_page/charsShown/charTimer/alpha/state` |
 | Decor | `bushDecor[400]+bushDecor_index+last_bush_x`, `detailDecor[200]+detail_index`, `draw_gap` |
 | Misc | `cfonts{menu_font1,2,3}`, `audio: audio`, `is_game_over`, `play_walking_sound` |
 
 Key sub-structs:
 - `Player`: `position` (sprite top-left), `velocity`, `initial_position`, `width/height` (tight hitbox, not sprite), `collisionOffset`, `isgrounded`, `facing_left`, `isdashing/dashduration/dashcooldowntimer`, `isattacking/hitduration/hashitthiswing`, `invultimer`, `health/maxHealth/isDead`, `prevBottom`.
-- `Enemy`: `position/velocity`, `width/height`, `facing_left`, `enemy_animations[5]`, `current_enemy_anim_name`, `state: idle/walking/attacking/hurting/dead`, `isactive`, `health/maxhealth/isdead`, `attack_cooldown`, `hashitplayerthisswing`, `invultimer`.
+- `Enemy`: `position/velocity`, `width/height`, `facing_left`, `enemy_animations[5]`, `current_enemy_anim_name`, `state: idle/walking/attacking/hurting/dead`, `isactive`, `health/maxhealth/isdead`, `attack_cooldown`, `hashitplayerthisswing`, `invultimer`, plus parametrized kind `type (0 normal / 1 brute)`, `speedMult/dmgMult/scaleMult`, `scoreValue` (no new structs).
 - `anim`: `tex, frameWidth/Height, framecount, currentframe, frameduration, frametimer, timedependent, looping, isfinished`.
 - `groundChunk`: `groundChunkRect`, `hasHealthItem/healthItemRect/healthItemCollected`; floating-platform and spike textures are shared from `tex`.
 - `bomb{rect,isactive,armed,fuseTimer}`, `spike{rect,isactive}`, `HealthDrop{rect,healAmount,active}`, `Explosion{position(center),timer,currentframe,active}`, `FloatingText{position,timer,maxTime,active,text[16],color}`, `fogpuff{offset,radius,speed,phase}`, `poison_gas{position,pgas_anim[12],velocity,pgas_damage,current_texture,frameduration,frametimer,attackcooldown,attacktimer}`.
+
+- `GS` also carries `bonusScore`, screen-shake state (`shakeTime/shakeDuration/shakeMagnitude/shakeOffset`), and `hitStopTimer` (brief world freeze on impacts).
 
 Player state ordering matters: `idle < running < jumping < attacking < dashing < hurting < dead` — code uses `current_state > X` as "higher priority blocks lower" guards.
 
@@ -177,6 +179,7 @@ Order is load-bearing — keep it:
 
 ```
 ShowCursor + CROSSHAIR
+hit-stop freeze check (shake decays, world skips while hitStopTimer>0)
 prevBottom = playerRect bottom
 player_has_fallen | playerDashUpdate | Gravity | hitting
 playerMovement | checkCeilingCollision | checkWallCollision
@@ -184,7 +187,7 @@ restrict_left_movement | groundedCheck | setplayerstate
 updateJumpFrame | DamageFromSpikes | DamageFromBombs
 updateExplosions | updateAnimation(player) | playerFootstepUpdate
 updateHealth | checkHealthPickup | updateGround | cameraMovement
-updatescore | move_pgas | updatePgasAnimation
+updateScreenShake | updatescore | move_pgas | updatePgasAnimation
 parallax update (camera delta) | updateEnemyInvultimer
 updatePlayerInvulnerability | updateCombat | updateEnemy
 updateEnemyAnimations | updateHealthDropPickup
@@ -197,7 +200,7 @@ floating texts rise/fade | enemyFootstepUpdate | isGameover
 
 ## 8. Player (`src/player.c`, `include/constants.h`)
 
-Controls: `A/D` or `←/→`? No — only `A/D` move, `SPACE` jump, `LEFT_SHIFT` dash (grounded only), `LEFT_MOUSE` attack.
+Controls: `A/D` or `←/→` move, `SPACE`/`UP`/`W` jump, `LEFT/RIGHT_SHIFT` dash (grounded only), `LEFT_MOUSE`/`DOWN`/`X`/`J` attack. Gamepad (pad 0): left-stick/D-pad move, `A` jump, `RB`/`B` dash, `X`/`RT`/`LT` attack, `START` pause. Menus/pause/gameover/tutorial-advance also accept gamepad `A` (confirm), `B` (back), D-pad.
 
 - Rects: `getPlayerRect() = {pos + collisionOffset, width, height}` (tight). Attack reach: 60px frontal slab `getplayerhitbox()`. Ceiling probe: top strip; wall probes: 8px side strips; ground probe: `{x+w/4, y+h, w/2, 2}`.
 - `Gravity`: `velocity.y += 1400*dt`.
@@ -220,7 +223,8 @@ Tuning: `pSpeed 1000, pAttackMoveSpeed 700, pSpeedAir 750, jumpSpeed 700, gravit
 
 ## 9. Enemies (`src/enemy.c`)
 
-Pool: 100 pre-loaded, `isactive=false` until `spawnEnemy(x, groundY)` (first free slot; HP scales `60*(1+0.8*diff)`).
+Pool: 100 pre-loaded, `isactive=false` until `spawnEnemy(x, groundY, type)` (first free slot; HP scales `60*(1+0.8*diff)` × difficulty × brute `2.2x`).
+Two parametrized kinds, no new structs: normal (100 pts, 1x HP/speed/damage) and brute (250 pts, 2.2x HP, 0.85x speed, 2x damage, 1.2x scale, reddish tint). `ENEMY_TYPE_AUTO (-1)` picks by difficulty/distance (10% → 35% brute, ± hard/easy); pattern legend `E` = auto, `F`/`R` = forced brute (`bruteAmbush` in the medium set).
 
 - Anims: idle 11f/0.08s loop, run 13f/0.04s loop, attack 18f/0.05s once, dead 15f/0.1s once, hurt 8f/0.08s once. Sizes from idle sheet `×3.0×1.8`.
 - Draw: anchored so feet sit at `ground_y` (`dest.y = ground_y - drawH`), flipped by `facing_left`, plus HP bar (60×8, 14px above sprite; LIME→YELLOW→RED) unless dead.
@@ -232,7 +236,7 @@ Pool: 100 pre-loaded, `isactive=false` until `spawnEnemy(x, groundY)` (first fre
   - `attacking`: `vx=0`; on finish: out-of-range → walking, else if `cooldown<=0` re-attack.
   - `hurting`: stun until hurt anim finishes, then attack-or-chase.
   - `dead`: `vx=0`; on finish → `isactive=false, isdead=true`.
-- `damageEnemy(amount)`: ignores dead/invul (`0.32s`); `health-=amount`; `<=1 → dead + enemyDie sound + spawnHealthDrop(center)`; else → hurting + hurt anim.
+- `damageEnemy(amount)`: ignores dead/invul (`0.32s`); `health-=amount`; `<=1 → dead + enemyDie sound + spawnHealthDrop(center) + kill-score bonus (`bonusScore += scoreValue`, floating `+N` text, gold normal / orange brute)`; else → hurting + hurt anim.
 - Footsteps: per-enemy timer, `enemy_run.mp3` every `0.35s` while walking.
 
 ---
@@ -240,7 +244,8 @@ Pool: 100 pre-loaded, `isactive=false` until `spawnEnemy(x, groundY)` (first fre
 ## 10. Combat, traps, fog (`src/combat.c`, `src/health.c`)
 
 - Player→enemy (`updateCombat`): while `isattacking`, during player frames `3..6`: if `playerHitbox ∩ enemyRect` → `damageEnemy(30)` + `hit` sound once per swing (`hashitthiswing`). Swing ends when `hitduration<=0`.
-- Enemy→player: while enemy `attacking` frames `6..10`: if `enemyHitbox(50px) ∩ playerRect` and `!hashit` → `damagePlayer(5)`.
+- Enemy→player: while enemy `attacking` frames `6..10`: if `enemyHitbox(50px) ∩ playerRect` and `!hashit` → `damagePlayer(diffDmg * dmgMult)` (brutes hit 2x).
+- Impact feedback: `damagePlayer` triggers hurt shake (`0.25s / 8px`) + hit-stop (`0.06s`); bomb detonation always triggers bomb shake (`0.35s / 14px`) + hit-stop (`0.09s`, stronger wins). Hit-stop freezes `updateGameplay` while `updateScreenShake` still decays; the render camera in `main.c` adds `shakeOffset` so logic positions stay clean.
 - Pgas contact: if `playerRect ∩ pgasRect` and `attacktimer==0` → `damagePlayer(10)`, reset `2.0s`.
 - `damagePlayer(amount)`: ignores dead/invul (`0.04s`); `health-=amount`, red `-N HP` float text, `invul=0.04`; `<=0 → dead + die sound`; else `current=player_hurt, vx=0, hurt sound`.
 - Spikes (`DamageFromSpikes`): shared `spike_cooldown 0.6s`; any active spike overlap with `cooldown==0` → `damagePlayer(25)`.
@@ -254,18 +259,18 @@ Pool: 100 pre-loaded, `isactive=false` until `spawnEnemy(x, groundY)` (first fre
 ## 11. World gen (`src/ground.c`, `src/pattern.c`)
 
 - Chunks: 50-ring of `groundChunk`. `updateGround()`: while `next_spawn_point < player.x + s_width`: if `distSinceLastPattern >= gap` → spawn pattern, else lay plain `368px` ground tile (+10% bomb, +55% detail cluster).
-- Patterns (`pattern.c`): ASCII rows, top-first, `.` empty, `G/P` ground block (182px wide), `E` enemy, `S` spike (92×80), `H` health rect, `B` bomb (defined, unused in maps). `getPatternWidth` = longest row; `spawn_pattern` converts cells: ground rows `40px` tall (bottom row stretches to screen bottom), enemies at `ground_y`, etc.
+- Patterns (`pattern.c`): ASCII rows, top-first, `.` empty, `G/P` ground block (182px wide), `E` enemy (auto type), `F`/`R` brute enemy, `S` spike (92×80), `H` health rect, `B` bomb (defined, unused in maps). `getPatternWidth` = longest row; `spawn_pattern` converts cells: ground rows `40px` tall (bottom row stretches to screen bottom), enemies at `ground_y`, etc.
   - Easy (used while `distance < 40000`): `gapspike`, `floatingPlatform`, `spikeGauntlet`, `enemyAmbush`.
   - Medium (adds): `dashGap` (4-col gap), `dashOverSpikes`, `lowCeilingGap` (wide gap + platforms). At `distance 40000–41000` a `"!!!! DASH OVER THE GAPS !!!!"` hint is drawn (its fade math references dead `4300/6700` values — always ~constant alpha).
 - Difficulty (`getDifficultyFactor`): `clamp(distance/80000, 0, 1)`; shrinks pattern gaps (`1600-800d … 2500-1000d`), speeds pgas (`280*(1+0.5d)`), shortens enemy cooldown, boosts enemy HP. Shown as green→yellow→red bar top-right.
-- Score: `distance = pos.x - initial.x`, `score = distance*0.0025` (int), drawn `SCORE: %06d` top-center.
+- Score: `distance = pos.x - initial.x`, `score = distance*0.0025 + bonusScore` (int), drawn `SCORE: %06d` top-center.
 - Decor: bush line every 55px (`400`-ring, 6 sprites, scale 2.5–3.5, random flip, `last_bush_x` continuity tracker); detail clusters 2–5 pieces every ~50px on 55% of plain tiles (`200`-ring, 9 grass/mushroom sprites).
 
 ---
 
 ## 12. Camera, background, animation, audio
 
-- Camera (`camera.c`): intro lock `target={0,0}` while `starting_timer>0`; else one-way: if `playerCenterX > target.x+450` → `target.x = center-450`. Never moves left/down/up. `restrict_left_movement` keeps player inside left edge.
+- Camera (`camera.c`): intro lock `target={0,0}` while `starting_timer>0`; else one-way: if `playerCenterX > target.x+450` → `target.x = center-450`. Never moves left/down/up. `restrict_left_movement` keeps player inside left edge. `triggerScreenShake`/`triggerHitStop`/`updateScreenShake` own the impact feedback (decaying random `shakeOffset`, stronger shake wins).
 - Background (`background.c`): 6 layers `BACKGROUND, WOODSFi, WOODSSe, WOODSTh, WOODSFo, BUSH_BACKGROUND` with scrollfactors `0.1…0.95`, `BG_SCALE 3.9`, tiled via `fmod(offsetX)`. World version offsets by `camera.target.x - camera.offset.x`, bottom layer pinned to `s_height-texH` and tinted `GRAY`; menu version is screen-space, all `WHITE`.
 - Animation (`animation.c`): generic `updateAnimation` (skip if `!timedependent`; advance on `frameduration`; loop or clamp + `isfinished`). Player table: idle 1f/0.1 loop, run 8f/0.08 loop, jump 2f manual, dash 4f/0.08 once (sheet sliced `/6` — mismatch), attack `GroundCombo3` sliced `/14` but plays 9f/0.06 loop, air `AirCombo2` 7f/0.08 loop, die 4f/0.08 once, hurt uses **uninitialized `tex->hurt` (bug: zero-size)** 1f/2.0s once. Pgas cycles 12 frames every `0.08s`.
 - Audio (`sound.c`): `load_audio` maps `assets/music/*.mp3|wav` → `menuMusic(menu_background_music, loop)`, `gameMusic(game_music1.wav, loop, vol .4, pitch .6)`, SFX `hurt/die(pitch1.2)/enemy_die/hit(=enemy_hurt)/jump(pitch1.2)/landing/dash/swing/player_swing/enemy_swing/running(.5)/enemy_run/health_pickup/explosion/menu_click/menu_select/typing`. Must call `updateMusic`每frame. Footsteps: player `running.mp3` every `0.35s` while grounded+fast; enemies same interval while walking. `unloadAudio` only frees 2 musics + 4 sounds (leaks rest).
@@ -277,12 +282,12 @@ Pool: 100 pre-loaded, `isactive=false` until `spawnEnemy(x, groundY)` (first fre
 
 | Input | Context | Effect |
 |---|---|---|
-| `D / A` | Game, grounded | Move ±1000 (700 while attacking) |
-| `D / A` | Game, air | Move ±750 |
-| `SPACE` | Game, grounded | Jump `vy=-700` |
-| `LEFT_SHIFT` | Game, grounded, `cd<=0` | Dash `±2200 + vy=-350`, 0.45s, cd 0.6s |
-| `LEFT_CLICK` | Game | Melee (0.54s ground / 0.56s air, hits frames 3–6, 30 dmg, 60px reach) |
-| `ESC` | Game / paused | Open pause menu / resume |
+| `D / A` | Game, grounded | Move ±1000 (700 while attacking), or left-stick / D-pad on gamepad |
+| `D / A` | Game, air | Move ±750 (gamepad stick works too) |
+| `SPACE` | Game, grounded | Jump `vy=-700` (gamepad `A` too) |
+| `LEFT_SHIFT` | Game, grounded, `cd<=0` | Dash `±2200 + vy=-350`, 0.45s, cd 0.6s (gamepad `RB`/`B` too) |
+| `LEFT_CLICK` | Game | Melee (0.54s ground / 0.56s air, hits frames 3–6, 30 dmg, 60px reach; gamepad `X`/`RT`/`LT` too) |
+| `ESC` | Game / paused | Open pause menu / resume (gamepad `START` pauses, `A` confirms, `B` backs) |
 | `ENTER / SPACE` | Tutorial | Complete typing / next page |
 | Hold `ENTER 2s` | Tutorial pre-game | Skip to GAME |
 | Type + `BACKSPACE` + `ENTER` | Name entry | 24-char name → start |
@@ -302,12 +307,12 @@ Pool: 100 pre-loaded, `isactive=false` until `spawnEnemy(x, groundY)` (first fre
 ## 15. File → responsibility map
 
 | File | Owns |
-|---|---|
-| `main.c` | Window, init, `updateGame + updateMusic`, screen dispatch draw, shutdown |
+|---|---|---|
+| `main.c` | Window, init, `updateGame + updateMusic`, screen dispatch draw (shake-offset render camera), shutdown |
 | `game.c` | Menu/name/gameover logic, `drawGame` order, `updateGameplay` order, `restartGame`, bombs draw |
 | `player.c` | Physics, state machine, dash/attack triggers, wall/ceiling/left-clamp/ground checks |
-| `enemy.c` | Enemy FSM + spawn/despawn, pgas follow + fog bands/puffs, spike damage |
-| `combat.c` | Hit windows (player 3–6, enemy 6–10), pgas tick, bomb fuse |
+| `enemy.c` | Enemy FSM + spawn/despawn (`spawnEnemy(gs,x,groundY,type)`), kill-score award, pgas follow + fog bands/puffs, spike damage |
+| `combat.c` | Hit windows (player 3–6, enemy 6–10 with per-enemy `dmgMult`), pgas tick, bomb fuse + bomb shake/hit-stop |
 | `health.c` | HP, invul, UI bar, drops, float texts |
 | `score.c` | File I/O top-5, game-over list, difficulty bar |
 | `explosion.c` | Timed 8-frame FX |
@@ -316,7 +321,7 @@ Pool: 100 pre-loaded, `isactive=false` until `spawnEnemy(x, groundY)` (first fre
 | `ground.c` | Spawner, difficulty, spikes/bombs/decor |
 | `pattern.c` | Tilemap definitions + rasterizer |
 | `background.c` | Parallax tiling |
-| `camera.c` | Deadzone follow |
+| `camera.c` | Deadzone follow + screen-shake / hit-stop triggers |
 | `texture.c` | Loading (see bug §14) |
 | `animation.c` | Frame tables + stepper |
 | `types.h` | Structs/enums/`GS` |

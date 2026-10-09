@@ -14,7 +14,7 @@ void updateEnemyInvultimer(GS* gs,float dt);
 void move_pgas(GS* gs,float dt);
 Rectangle getPgasRect(GS* gs);
 void drawPgasSprite(GS* gs);
-void spawnEnemy(GS* gs, float x, float groundY);
+void spawnEnemy(GS* gs, float x, float groundY, int type);
 void initFogPuffs(GS* gs);
 void drawFog(GS* gs);
 void drawFogPuffs(GS* gs, float time);

@@ -67,7 +67,9 @@
 // for score
 #define MAX_HIGH_SCORES   5
 #define HIGHSCORE_FILE    "data/highscore.txt"
-#define SCORE_PER_DISTANCE 0.0025f   
+#define SCORE_PER_DISTANCE 0.0025f
+#define SCORE_PER_KILL_NORMAL 100
+#define SCORE_PER_KILL_BRUTE  250
 #define MAX_NAME_LEN 25
 
 //bomb
@@ -133,6 +135,26 @@
 #define detail_min_scale        1.8f
 #define detail_max_scale        3.0f
 #define skip_timer 2.0f
+
+// screen shake + hit-stop (bomb explosions and player damage)
+#define SHAKE_BOMB_DURATION  0.35f
+#define SHAKE_BOMB_MAGNITUDE 14.0f
+#define HITSTOP_BOMB_DURATION 0.09f
+#define SHAKE_HURT_DURATION  0.25f
+#define SHAKE_HURT_MAGNITUDE 8.0f
+#define HITSTOP_HURT_DURATION 0.06f
+
+// gamepad (controller) tuning
+#define GAMEPAD_DEADZONE 0.3f
+
+// second enemy type (no new structs — parametrized via spawnEnemy type id)
+#define ENEMY_TYPE_NORMAL 0
+#define ENEMY_TYPE_BRUTE  1
+#define ENEMY_TYPE_AUTO   -1   // pick by difficulty/distance
+#define ENEMY_BRUTE_HP_MULT    2.2f
+#define ENEMY_BRUTE_SPEED_MULT 0.85f
+#define ENEMY_BRUTE_DMG_MULT   2.0f
+#define ENEMY_BRUTE_SCALE_MULT 1.2f
 
 // player-chosen difficulty (GS.difficulty): picked on the DIFFICULTY screen
 // after START, before name entry. MEDIUM == legacy vanilla tuning.

@@ -3,6 +3,7 @@
 #include"player.h"
 #include"health.h"
 #include"explosion.h"
+#include"camera.h"
 #include"raymath.h"
 #include<math.h>
 
@@ -50,7 +51,8 @@ void updateCombat(GS *gs, float dt){
             if(enemy_attack_start_frame <= e->currentframe && e->currentframe <= enemy_attack_end_frame){
                 Rectangle enemy_hitbox = getEnemyHitbox(en);
                 if(!en->hashitplayerthisswing && CheckCollisionRecs(getPlayerRect(gs),enemy_hitbox)){
-                    damagePlayer(gs, diffEnemyDmg(gs->difficulty));                   
+                    float mult = (en->dmgMult > 0.0f) ? en->dmgMult : 1.0f;
+                    damagePlayer(gs, diffEnemyDmg(gs->difficulty) * mult);                   
                     en->hashitplayerthisswing=true;    
                 }          
             }
@@ -103,6 +105,10 @@ void DamageFromBombs(GS* gs, float dt) {
                 if (distNow <= bomb_explosion_range) {
                     damagePlayer(gs, diffBombDmg(gs->difficulty));
                 }
+                // bomb blasts always shake (even on a clean dodge); the stronger
+                // bomb shake wins over the hurt shake via triggerScreenShake().
+                triggerScreenShake(gs, SHAKE_BOMB_DURATION, SHAKE_BOMB_MAGNITUDE);
+                triggerHitStop(gs, HITSTOP_BOMB_DURATION);
             }
         }
     }

@@ -1,6 +1,8 @@
 #include"enemy.h"
 #include"animation.h"
 #include<math.h>
+#include<stdio.h>
+#include<string.h>
 #include"player.h"
 #include"raymath.h"
 #include"health.h"
@@ -9,8 +11,9 @@
 
 Rectangle getEnemyRect(Enemy* enemy){
     anim *frame = &enemy->enemy_animations[enemy->current_enemy_anim_name];
-    float width = frame->frameWidth * SPRITE_SCALE * 1.8f;
-    float height = frame->frameHeight * SPRITE_SCALE * 1.8f;
+    float s = (enemy->scaleMult > 0.0f) ? enemy->scaleMult : 1.0f;
+    float width = frame->frameWidth * SPRITE_SCALE * 1.8f * s;
+    float height = frame->frameHeight * SPRITE_SCALE * 1.8f * s;
     return (Rectangle){enemy->position.x, enemy->position.y + enemy->height - height, width, height};
 }
 
@@ -84,6 +87,11 @@ Enemy loadEnemy(tex* tex){
     enemy.state = walking_enemy;
     enemy.health = enemy_max_health;
     enemy.maxhealth = enemy_max_health;   // add this
+    enemy.type = ENEMY_TYPE_NORMAL;
+    enemy.speedMult = 1.0f;
+    enemy.dmgMult = 1.0f;
+    enemy.scaleMult = 1.0f;
+    enemy.scoreValue = SCORE_PER_KILL_NORMAL;
 
     return enemy;
 
@@ -112,9 +120,9 @@ void drawEnemy(Enemy* enemy){
     if(!enemy->isactive) return;
 
     anim* frame = &enemy->enemy_animations[enemy->current_enemy_anim_name];
-
-    float drawWidth  = frame->frameWidth  * SPRITE_SCALE * 1.8f;
-    float drawHeight = frame->frameHeight * SPRITE_SCALE * 1.8f;
+    float s = (enemy->scaleMult > 0.0f) ? enemy->scaleMult : 1.0f;
+    float drawWidth  = frame->frameWidth  * SPRITE_SCALE * 1.8f * s;
+    float drawHeight = frame->frameHeight * SPRITE_SCALE * 1.8f * s;
     Rectangle source = {
         .x = frame->currentframe*frame->frameWidth,
         .y = 0,
@@ -127,7 +135,8 @@ void drawEnemy(Enemy* enemy){
         .width = drawWidth,
         .height = drawHeight 
     };
-    DrawTexturePro(frame->tex,source,dest,(Vector2){0.0f,0.0f},0.0f,WHITE);
+    Color tint = (enemy->type == ENEMY_TYPE_BRUTE) ? (Color){255, 170, 170, 255} : WHITE;
+    DrawTexturePro(frame->tex,source,dest,(Vector2){0.0f,0.0f},0.0f,tint);
     drawEnemyHealthbar(enemy);  
 }
 
@@ -222,7 +231,8 @@ void updateEnemy(GS* gs,float dt){
                     break;
                 }
                 float dir = enemy->facing_left ? -1.0f : 1.0f;
-                enemy->velocity.x = dir * enSpeed * diffEnemySpeedMult(gs->difficulty);
+                float sm = (enemy->speedMult > 0.0f) ? enemy->speedMult : 1.0f;
+                enemy->velocity.x = dir * enSpeed * diffEnemySpeedMult(gs->difficulty) * sm;
                 enemy->position.x += enemy->velocity.x * dt;
                 updateEnemyAnimation(enemy, enemy_running);
                 break;
@@ -251,6 +261,22 @@ void updateEnemyInvultimer(GS* gs,float dt){
     }
 }
 
+static void awardKillScore(GS* gs, Enemy* e){
+    int amount = (e->scoreValue > 0) ? e->scoreValue : SCORE_PER_KILL_NORMAL;
+    gs->bonusScore += amount;
+    for(int t = 0; t < 10; t++){
+        if(!gs->floatTexts[t].active){
+            gs->floatTexts[t].active = true;
+            gs->floatTexts[t].position = (Vector2){e->position.x, e->position.y - 30.0f};
+            gs->floatTexts[t].timer = 1.5f;
+            gs->floatTexts[t].maxTime = 1.5f;
+            snprintf(gs->floatTexts[t].text, sizeof(gs->floatTexts[t].text), "+%d", amount);
+            gs->floatTexts[t].color = (e->type == ENEMY_TYPE_BRUTE) ? ORANGE : GOLD;
+            break;
+        }
+    }
+}
+
 void damageEnemy(GS* gs,Enemy* e,float amount){
     if (e->isdead || e->invultimer>0.0f) return;
     e->health -= amount;
@@ -261,7 +287,8 @@ void damageEnemy(GS* gs,Enemy* e,float amount){
         e->state = dead_enemy;
         PlaySound(gs->audio.enemyDie);
         updateEnemyAnimation(e,enemy_dead);
-        spawnHealthDrop(gs, e->position.x + e->width/2.0f, e->position.y + e->height/2.0f); 
+        spawnHealthDrop(gs, e->position.x + e->width/2.0f, e->position.y + e->height/2.0f);
+        awardKillScore(gs, e);
     } else {
         e->state = hurting_enemy;
         // e->currentFrame = 0;
@@ -343,14 +370,51 @@ void DamageFromSpikes(GS* gs,float dt){
 
     }
 }
-void spawnEnemy(GS* gs, float x, float groundY){
+static int pickAutoEnemyType(GS* gs){
+    float diff = getDifficultyFactor(gs);
+    float bruteChance = 10.0f + 25.0f * diff;   // 10% early -> 35% late
+    if(gs->difficulty == DIFF_HARD) bruteChance += 10.0f;
+    else if(gs->difficulty == DIFF_EASY) bruteChance -= 5.0f;
+    if(bruteChance < 0.0f) bruteChance = 0.0f;
+    if(bruteChance > 60.0f) bruteChance = 60.0f;
+    return (GetRandomValue(1, 100) <= (int)bruteChance) ? ENEMY_TYPE_BRUTE : ENEMY_TYPE_NORMAL;
+}
+
+void spawnEnemy(GS* gs, float x, float groundY, int type){
     for(int i = 0; i < max_enemy_num; i++){
         Enemy* e = &gs->enemy[i];
         if(e->isactive) continue;
+        if(type == ENEMY_TYPE_AUTO) type = pickAutoEnemyType(gs);
+        if(type != ENEMY_TYPE_BRUTE) type = ENEMY_TYPE_NORMAL;
         float diff = getDifficultyFactor(gs);
+        // reset to idle-frame base size first (pool slots may hold a scaled brute)
+        anim* idle = &e->enemy_animations[enemy_idle];
+        float baseW = idle->frameWidth * SPRITE_SCALE * 1.8f;
+        float baseH = idle->frameHeight * SPRITE_SCALE * 1.8f;
+        if(baseW <= 0.0f || baseH <= 0.0f){
+            baseW = e->width > 0.0f ? e->width : 60.0f;
+            baseH = e->height > 0.0f ? e->height : 100.0f;
+        }
+        e->type = type;
+        if(type == ENEMY_TYPE_BRUTE){
+            e->speedMult = ENEMY_BRUTE_SPEED_MULT;
+            e->dmgMult = ENEMY_BRUTE_DMG_MULT;
+            e->scaleMult = ENEMY_BRUTE_SCALE_MULT;
+            e->scoreValue = SCORE_PER_KILL_BRUTE;
+            e->width = baseW * ENEMY_BRUTE_SCALE_MULT;
+            e->height = baseH * ENEMY_BRUTE_SCALE_MULT;
+            e->health = enemy_max_health * ENEMY_BRUTE_HP_MULT * (1.0f + 0.8f*diff) * diffEnemyHpMult(gs->difficulty);
+        }else{
+            e->speedMult = 1.0f;
+            e->dmgMult = 1.0f;
+            e->scaleMult = 1.0f;
+            e->scoreValue = SCORE_PER_KILL_NORMAL;
+            e->width = baseW;
+            e->height = baseH;
+            e->health = enemy_max_health * (1.0f + 0.8f*diff) * diffEnemyHpMult(gs->difficulty);
+        }
         e->position = (Vector2){ x, groundY - e->height };
         e->velocity = (Vector2){0,0};
-        e->health = enemy_max_health * (1.0f + 0.8f*diff) * diffEnemyHpMult(gs->difficulty); 
         e->maxhealth = e->health;
         e->isdead = false;
         e->invultimer = 0.0f;

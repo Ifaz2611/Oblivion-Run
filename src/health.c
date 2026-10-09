@@ -1,6 +1,7 @@
 #include"health.h"
 #include"player.h"
 #include"enemy.h"
+#include"camera.h"
 #include<string.h>
 #include<stdio.h>
 #include<math.h>
@@ -61,6 +62,9 @@ void damagePlayer(GS* gs,float amount){
     p->health-=amount;
     spawn_health_update(gs,-amount);
     p->invultimer = player_invul_time;
+    // impact feedback for every player hit (bombs, enemies, spikes, gas)
+    triggerScreenShake(gs, SHAKE_HURT_DURATION, SHAKE_HURT_MAGNITUDE);
+    triggerHitStop(gs, HITSTOP_HURT_DURATION);
 
     if(p->health<=0.0f){
         p->isDead = true;

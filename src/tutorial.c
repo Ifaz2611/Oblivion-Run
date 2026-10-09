@@ -25,6 +25,8 @@ static const char *tutorialPages[] = {
     "SPACE or UP ARROW  -  Jump\n\n"
     "LEFT / RIGHT SHIFT  -  Dash\n\n"
     "LEFT CLICK or DOWN ARROW / X  -  Attack\n\n"
+    "Gamepad: Left stick / D-pad move, A jump,\n\n"
+    "RB or B dash, X or RT attack, Start pause\n\n"
     "On-screen buttons (< > ^ DSH ATK) work too!\n\n",
 
     "                     OBSTACLES\n\n"
@@ -227,7 +229,8 @@ void updateTutorial(GS *gs, float dt)
             gs->tutorial_charTimer -= tutorial_char_interval;
             gs->tutorial_charsShown++;
         }
-        if ((IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE))
+        if ((IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)
+             || (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN)))
                 && gs->tutorial_charsShown < textLen) {
             gs->tutorial_charsShown = textLen;      /* reveal all instantly */
             PlaySound(gs->audio.menu_click);
@@ -237,7 +240,8 @@ void updateTutorial(GS *gs, float dt)
         break;
 
     case tut_waiting:
-        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)) {
+        if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE)
+            || (IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN))) {
             gs->tutorial_state = tut_fadeout;
         }
         break;

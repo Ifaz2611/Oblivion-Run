@@ -19,6 +19,9 @@ static const char* floatingPlatform[] = {
 static const char* enemyAmbush[] = {
      "...E.....E",
      "GGGGGGGGGG" };
+static const char* bruteAmbush[] = {
+     "...E.....F",
+     "GGGGGGGGGG" };
 static const char* spikeGaunlet[] = {
     ".S...S.....S.",
     "GGG..GG...GGG"
@@ -62,6 +65,7 @@ const pattern all_medium_patterns[]={
     {.rows = floatingPlatform, .rowcount = sizeof(floatingPlatform)/sizeof(floatingPlatform[0])},
     {.rows = spikeGaunlet,.rowcount = sizeof(spikeGaunlet)/sizeof(spikeGaunlet[0])},
     {.rows=enemyAmbush,.rowcount=sizeof(enemyAmbush)/sizeof(enemyAmbush[0])},
+    {.rows=bruteAmbush,.rowcount=sizeof(bruteAmbush)/sizeof(bruteAmbush[0])},
     {.rows=dashGap,.rowcount=sizeof(dashGap)/sizeof(dashGap[0])},
     {.rows=dashOverSpikes,.rowcount=sizeof(dashOverSpikes)/sizeof(dashOverSpikes[0])},
     {.rows=lowCeilingGap,.rowcount=sizeof(lowCeilingGap)/sizeof(lowCeilingGap[0])}
@@ -125,7 +129,12 @@ void spawn_pattern(GS* gs,const pattern *p,float baseX,float groundY,float scree
                     break;
                 }
                case 'E':
-                    spawnEnemy(gs, colX, groundY);
+                    spawnEnemy(gs, colX, groundY, ENEMY_TYPE_AUTO);
+                    break;
+                case 'F':
+                case 'R':
+                    // explicit brute spawn (second enemy type, parametrized — no new structs)
+                    spawnEnemy(gs, colX, groundY, ENEMY_TYPE_BRUTE);
                     break;
                 case 'S':
                 {

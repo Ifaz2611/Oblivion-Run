@@ -58,7 +58,10 @@ int main(){
             drawTutorial(&gs,&tex);
         }
         else if (gs.currentscreen == GAME || gs.currentscreen == PAUSED) {
-            BeginMode2D(gs.camera); 
+            Camera2D renderCam = gs.camera;
+            renderCam.offset.x += gs.shakeOffset.x;
+            renderCam.offset.y += gs.shakeOffset.y;
+            BeginMode2D(renderCam); 
             drawGame(&gs, &tex);
             EndMode2D();
             drawHealthUI(&gs);

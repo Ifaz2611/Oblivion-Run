@@ -283,9 +283,17 @@
     void updateGameplay(GS* gs,anim* anim,float dt){
         ShowCursor();
         SetMouseCursor(MOUSE_CURSOR_CROSSHAIR);
-        if(IsKeyPressed(KEY_ESCAPE)){
+        bool padPause = IsGamepadAvailable(0) && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT);
+        if(IsKeyPressed(KEY_ESCAPE) || padPause){
             gs->currentscreen = PAUSED;
             gs->pause_selection = 0;
+            return;
+        }
+        // hit-stop: brief world freeze on heavy impacts (shake still decays).
+        if(gs->hitStopTimer > 0.0f){
+            gs->hitStopTimer -= dt;
+            if(gs->hitStopTimer < 0.0f) gs->hitStopTimer = 0.0f;
+            updateScreenShake(gs, dt);
             return;
         }
         updateTouchButtons(gs);
@@ -315,6 +323,7 @@
 
         updateGround(gs);
         cameraMovement(gs);
+        updateScreenShake(gs, dt);
         updatescore(gs);
         move_pgas(gs,dt);
         updatePgasAnimation(gs,dt);
@@ -448,6 +457,7 @@ void restartGame(GS* gs) {
     gs->pgas.position = (Vector2){-200.0f, ground_y - gs->pgas.pgas_anim[0].height + 50.0f};
 
     gs->score = 0;
+    gs->bonusScore = 0;
     gs->timer = 0.0f;
     
     gs->last_bush_x = gs->next_spawn_point;
@@ -469,6 +479,8 @@ void restartGame(GS* gs) {
     gs->player.invultimer = 0; gs->player.dashcooldowntimer = 0; gs->player.dashduration = 0;
     gs->player.hitduration = 0; gs->player.hashitthiswing = false;
     gs->spike_cooldown = 0; gs->pgas.attacktimer = 0;
+    gs->shakeTime = 0; gs->shakeDuration = 0; gs->shakeMagnitude = 0;
+    gs->shakeOffset = (Vector2){0, 0}; gs->hitStopTimer = 0;
     
     for(int i=0;i<max_bush_decor;i++)   gs->bushDecor[i].active = false;
     for(int i=0;i<max_detail_decor;i++) gs->detailDecor[i].active = false;
@@ -488,6 +500,30 @@ static Rectangle pauseOptionRect(int index){
                        width, height};
 }
 
+// ---- gamepad helpers for menus (pad 0 only) ----
+static bool padAvail(void){ return IsGamepadAvailable(0); }
+static bool padConfirm(void){
+    return padAvail() && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_DOWN);
+}
+static bool padBack(void){
+    return padAvail() && (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_FACE_RIGHT) ||
+                          IsGamepadButtonPressed(0, GAMEPAD_BUTTON_MIDDLE_RIGHT));
+}
+static bool padUp(void){
+    return padAvail() && (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_UP) ||
+                          IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_THUMB));
+}
+static bool padDown(void){
+    return padAvail() && (IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_DOWN) ||
+                          IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_THUMB));
+}
+static bool padLeft(void){
+    return padAvail() && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_LEFT);
+}
+static bool padRight(void){
+    return padAvail() && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_LEFT_FACE_RIGHT);
+}
+
 static void activatePauseSelection(GS* gs){
     PlaySound(gs->audio.menu_click);
     if(gs->pause_selection == 0){
@@ -505,20 +541,20 @@ static void activatePauseSelection(GS* gs){
 void updatePauseMenu(GS* gs){
     ShowCursor();
     SetMouseCursor(MOUSE_CURSOR_DEFAULT);
-    if(IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE)){
+    if(IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE) || padBack()){
         gs->currentscreen = GAME;
         PlaySound(gs->audio.menu_click);
         return;
     }
-    if(IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)){
+    if(IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W) || padUp()){
         gs->pause_selection = (gs->pause_selection + 2) % 3;
         PlaySound(gs->audio.menu_select);
     }
-    if(IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)){
+    if(IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S) || padDown()){
         gs->pause_selection = (gs->pause_selection + 1) % 3;
         PlaySound(gs->audio.menu_select);
     }
-    if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_SPACE)){
+    if(IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_SPACE) || padConfirm()){
         activatePauseSelection(gs);
         return;
     }
@@ -555,7 +591,7 @@ void drawPauseMenu(GS* gs){
                              rect.y + (rect.height - labelSize.y) * 0.5f},
                    36, 0, selected ? BLACK : RAYWHITE);
     }
-    const char *hint = "ESC: Resume";
+    const char *hint = "ESC / START: Resume";
     Vector2 hintSize = MeasureTextEx(gs->cfonts.menu_font3, hint, 24, 0);
     DrawTextEx(gs->cfonts.menu_font3, hint,
                (Vector2){(s_width - hintSize.x) * 0.5f, s_height - 52.0f},
@@ -620,20 +656,20 @@ void updateMenu(GS* gs) {
     ShowCursor();
     SetMouseCursor(MOUSE_CURSOR_DEFAULT);
    //down key niche toggle korar jonno
-    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
+    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S) || padDown()) {
         gs->menu_selection++;
         PlaySound(gs->audio.menu_select);
         if (gs->menu_selection > 3) gs->menu_selection = 0; // four menu options: start, tutorial, credits, exit
     }
     //up key te vice versa
-    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
+    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W) || padUp()) {
         gs->menu_selection--;
         PlaySound(gs->audio.menu_select);
         if (gs->menu_selection < 0) gs->menu_selection = 3;
     }
 
     //enter key (keyboard)
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_SPACE)) {
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_SPACE) || padConfirm()) {
         activateMenuSelection(gs);
         updateParallax(gs,5.0f);
         return;
@@ -795,32 +831,32 @@ static void confirmDifficultySelection(GS* gs) {
 void updateDifficultySelect(GS* gs) {
     ShowCursor();
     SetMouseCursor(MOUSE_CURSOR_DEFAULT);
-    if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A)) {
+    if (IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_A) || padLeft()) {
         gs->difficulty_selection--;
         if (gs->difficulty_selection < DIFF_EASY) gs->difficulty_selection = DIFF_HARD;
         PlaySound(gs->audio.menu_select);
     }
-    if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D)) {
+    if (IsKeyPressed(KEY_RIGHT) || IsKeyPressed(KEY_D) || padRight()) {
         gs->difficulty_selection++;
         if (gs->difficulty_selection > DIFF_HARD) gs->difficulty_selection = DIFF_EASY;
         PlaySound(gs->audio.menu_select);
     }
-    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W)) {
+    if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W) || padUp()) {
         gs->difficulty_selection--;
         if (gs->difficulty_selection < DIFF_EASY) gs->difficulty_selection = DIFF_HARD;
         PlaySound(gs->audio.menu_select);
     }
-    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S)) {
+    if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S) || padDown()) {
         gs->difficulty_selection++;
         if (gs->difficulty_selection > DIFF_HARD) gs->difficulty_selection = DIFF_EASY;
         PlaySound(gs->audio.menu_select);
     }
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_SPACE)) {
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_SPACE) || padConfirm()) {
         confirmDifficultySelection(gs);
         updateParallax(gs, 5.0f);
         return;
     }
-    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE)) {
+    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE) || padBack()) {
         gs->currentscreen = MENU;
         gs->menu_selection = 0;
         updateParallax(gs, 5.0f);
@@ -1071,7 +1107,7 @@ void player_has_fallen(GS* gs){
 
 void updatescore(GS* gs){
     gs->distance_traveled = gs->player.position.x -gs->player.initial_position.x;
-    gs->score = gs->distance_traveled*SCORE_PER_DISTANCE;
+    gs->score = (int)(gs->distance_traveled*SCORE_PER_DISTANCE) + gs->bonusScore;
 }
 
 void drawScoreHUD(const GS* gs) {
@@ -1090,16 +1126,16 @@ void drawScoreHUD(const GS* gs) {
 
 
 void updateGameover(GS* gs){
-    // ENTER / R = instant retry with the same hero name (no menu, no retyping).
-    // ESC / BACKSPACE / M = back to menu.
-    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_R)) {
+    // ENTER / R / pad-A = instant retry with the same hero name (no menu, no retyping).
+    // ESC / BACKSPACE / M / pad-B = back to menu.
+    if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_KP_ENTER) || IsKeyPressed(KEY_R) || padConfirm()) {
         PlaySound(gs->audio.menu_click);
         restartGame(gs);
         StopMusicStream(gs->audio.menuMusic);
         gs->currentscreen = GAME;
         return;
     }
-    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_M)) {
+    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_BACKSPACE) || IsKeyPressed(KEY_M) || padBack()) {
         gs->currentscreen = MENU;
         gs->menu_selection = 0;
         PlayMusicStream(gs->audio.menuMusic);
@@ -1151,7 +1187,7 @@ void drawGameover(GS* gs){
 
 void updateCredits(GS* gs) {
     // esc ba enter chaple abar menu te ferot jabe
-    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_BACKSPACE)) {
+    if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_BACKSPACE) || padConfirm() || padBack()) {
         gs->currentscreen = MENU;
         gs->menu_selection = 0;
     }
