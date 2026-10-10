@@ -199,7 +199,9 @@ void updateTutorial(GS *gs, float dt)
 
     /* --- hold ENTER to skip the whole tutorial ---------------------- */
     if (!gs->pressed_how_to_play) {
-        if (IsKeyDown(KEY_ENTER)) {
+        bool holdSkip = IsKeyDown(KEY_ENTER) || IsKeyDown(KEY_KP_ENTER) ||
+                        (IsGamepadAvailable(0) && IsGamepadButtonDown(0, GAMEPAD_BUTTON_MIDDLE_RIGHT));
+        if (holdSkip) {
             gs->skip_pressed_timer += dt;
             if (gs->skip_pressed_timer >= gs->skip_duration) {
                 gs->skip_pressed_timer = 0.0f;

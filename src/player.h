@@ -25,4 +25,6 @@ void updateTouchButtons(GS* gs);
 Rectangle getTouchBtnRect(touchbtn b);
 bool isMouseOnAnyTouchBtn(void);
 void drawTouchControls(GS* gs);
+void updateDashGhosts(GS* gs, float dt);
+void drawDashGhosts(GS* gs);
 #endif

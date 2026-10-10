@@ -32,6 +32,7 @@
 
         p->isgrounded = false;
         for(int i = 0; i < MaxChunkNum; i++){
+            if(gs->gchunk[i].groundChunkRect.width <= 0.0f) continue;
             if(CheckCollisionRecs(getGroundcheckRec(gs), gs->gchunk[i].groundChunkRect)){
                 p->isgrounded = true;
                 p->position.y = gs->gchunk[i].groundChunkRect.y - p->collisionOffset.y - p->height;

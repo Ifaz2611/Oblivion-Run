@@ -61,6 +61,8 @@
         float maxHealth;   //maximum health koto
         bool isDead;
         float prevBottom;   // body bottom at the start of this frame
+        float coyoteTimer;  // grace period to jump after stepping off edges
+        float jumpBufferTimer; // grace period if jump is pressed slightly before landing
 
     }Player;
 
@@ -300,6 +302,15 @@ typedef struct animation{
         TB_COUNT
     } touchbtn;
 
+    // dash afterimage / silhouette ghost effect
+    typedef struct DashGhost {
+        Vector2 position;
+        Rectangle source;
+        float alpha;
+        bool active;
+        bool facing_left;
+    } DashGhost;
+
     typedef struct gameState // main struct of this game, ekhane shob rokom game er element ache 
     {
         gamescreen currentscreen; // game menu te naki game er vitore ta bujhai
@@ -410,6 +421,15 @@ typedef struct animation{
         // on-screen buttons: held this frame vs previous frame (for edge detection)
         bool touchHeld[TB_COUNT];
         bool touchPrevHeld[TB_COUNT];
+
+        // combo system: chain consecutive hits for score multipliers
+        int comboCount;
+        float comboTimer;
+        float comboMultiplier;
+
+        // dash afterimages / ghost trail
+        DashGhost dashGhosts[MAX_DASH_GHOSTS];
+        float dashGhostSpawnTimer;
     }GS;
 
 

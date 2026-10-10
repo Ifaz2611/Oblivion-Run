@@ -32,11 +32,30 @@ void updateCombat(GS *gs, float dt){
                 damageEnemy(gs, &gs->enemy[target], player_attack_power);
                 PlaySound(gs->audio.hit);
                 p->hashitthiswing = true;
+
+                // combo system: chain attacks for score multiplier
+                gs->comboCount++;
+                gs->comboTimer = COMBO_TIMEOUT_DURATION;
+                if(gs->comboCount >= 8)      gs->comboMultiplier = 2.5f;
+                else if(gs->comboCount >= 5) gs->comboMultiplier = 2.0f;
+                else if(gs->comboCount >= 3) gs->comboMultiplier = 1.5f;
+                else if(gs->comboCount >= 2) gs->comboMultiplier = 1.25f;
+                else                         gs->comboMultiplier = 1.0f;
             }
         }
         if(p->hitduration<=0){
             p->isattacking = false;
             p->hashitthiswing = false; 
+        }
+    }
+
+    // combo timer countdown
+    if(gs->comboTimer > 0.0f){
+        gs->comboTimer -= dt;
+        if(gs->comboTimer <= 0.0f){
+            gs->comboTimer = 0.0f;
+            gs->comboCount = 0;
+            gs->comboMultiplier = 1.0f;
         }
     } 
     for(int i=0;i<max_enemy_num;i++){

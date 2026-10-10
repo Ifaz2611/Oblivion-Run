@@ -65,6 +65,7 @@
 
 
 
+        drawDashGhosts(gs);
         drawPlayerSprite(gs);
 
         for(int i=0;i<max_enemy_num;i++){
@@ -83,7 +84,11 @@
 
        }
       }  
-      if(gs->distance_traveled > 40000 && gs->distance_traveled < 41000){
+      float hintThreshold = 40000.0f;
+      if(gs->difficulty == DIFF_EASY) hintThreshold = 60000.0f;
+      else if(gs->difficulty == DIFF_HARD) hintThreshold = 20000.0f;
+
+      if(gs->distance_traveled > hintThreshold && gs->distance_traveled < hintThreshold + 1200.0f){
         const char* hint = "!!!! DASH OVER THE GAPS !!!!";
         Vector2 size = MeasureTextEx(gs->cfonts.menu_font3, hint, 60, 0);
 
@@ -92,11 +97,11 @@
 
         float d = gs->distance_traveled;
         float alpha = 1.0f;
-        if(d < 40300)      alpha = (d - 40000.0f) / 300.0f;   // fade in
-        else if(d > 40700) alpha = (41000.0f - d) / 300.0f;   // fade out
+        if(d < hintThreshold + 300.0f)       alpha = (d - hintThreshold) / 300.0f;   // fade in
+        else if(d > hintThreshold + 900.0f)  alpha = ((hintThreshold + 1200.0f) - d) / 300.0f; // fade out
 
         DrawTextEx(gs->cfonts.menu_font3, hint, (Vector2){x, 100}, 60, 0, Fade(LIGHTGRAY, alpha));
-        }
+      }
 
     }
 
@@ -276,6 +281,7 @@
         gs->player.prevBottom = pr.y + pr.height;
         player_has_fallen(gs);
         playerDashUpdate(gs,dt);
+        updateDashGhosts(gs, dt);
         Gravity(gs,dt);
         hitting(gs,dt);
         playerMovement(gs,anim,dt);
@@ -372,6 +378,7 @@ void updateWorldForResize(GS* gs){
             gs->fogpuffs[i].offset.y = screenHeight - fog_bottom_gap;
     }
 
+    gs->camera.offset = (Vector2){(float)s_width / 2.0f - 200.0f, 0.0f};
     gs->last_ground_y = ground_y;
     gs->last_screen_height = screenHeight;
 }
@@ -456,6 +463,13 @@ void restartGame(GS* gs) {
     for(int i=0;i<max_health_drops;i++) gs->healthDrops[i].active = false;
     for(int i=0;i<max_explosions;i++)   gs->explosions[i].active = false;
     for(int i=0;i<10;i++)               gs->floatTexts[i].active = false;
+    for(int i=0;i<MAX_DASH_GHOSTS;i++)  gs->dashGhosts[i].active = false;
+    gs->dashGhostSpawnTimer = 0.0f;
+    gs->comboCount = 0;
+    gs->comboTimer = 0.0f;
+    gs->comboMultiplier = 1.0f;
+    gs->player.coyoteTimer = 0.0f;
+    gs->player.jumpBufferTimer = 0.0f;
     gs->player.facing_left = false;
     gs->distance_traveled = 0;
     updateGround(gs);
@@ -621,6 +635,15 @@ static void activateMenuSelection(GS* gs) {
     }
 }
 
+static Vector2 getMenuOptionPosition(int index){
+    float baseMenuX = s_width * 0.54f;
+    if(baseMenuX + 360.0f > (float)s_width - 20.0f) {
+        baseMenuX = (float)s_width - 380.0f;
+    }
+    float yOffset[4] = {-50.0f, 25.0f, 100.0f, 175.0f};
+    return (Vector2){baseMenuX + index * 30.0f, (float)s_height / 2.0f + yOffset[index]};
+}
+
 void updateMenu(GS* gs) {
     ShowCursor();
     SetMouseCursor(MOUSE_CURSOR_DEFAULT);
@@ -651,15 +674,10 @@ void updateMenu(GS* gs) {
         (gs->menu_selection == 2) ? "> CREDITS <" : "  CREDITS  ",
         (gs->menu_selection == 3) ? "> EXIT <" : "  EXIT  "
     };
-    Vector2 positions[4] = {
-        (Vector2){700.0f, s_height / 2 - 50.0f},
-        (Vector2){760.0f, s_height / 2 + 25.0f},
-        (Vector2){820.0f, s_height / 2 + 100.0f},
-        (Vector2){880.0f, s_height / 2 + 175.0f}
-    };
     for (int i = 0; i < 4; i++) {
+        Vector2 pos = getMenuOptionPosition(i);
         Vector2 size = MeasureTextEx(gs->cfonts.menu_font2, labels[i], 60, 0);
-        Rectangle bounds = {positions[i].x, positions[i].y, size.x, size.y};
+        Rectangle bounds = {pos.x, pos.y, size.x, size.y};
         if (CheckCollisionPointRec(mouse, bounds)) {
             if (gs->menu_selection != i) {
                 gs->menu_selection = i;
@@ -753,16 +771,16 @@ void drawMenu(GS* gs, tex* tex) {
     Color exitColor    = (gs->menu_selection == 3) ? WHITE : DARKGRAY;
 
     const char* startText = (gs->menu_selection == 0) ? "> START GAME <" : "  START GAME  ";
-    DrawTextEx(gs->cfonts.menu_font2, startText, (Vector2){700.0f, s_height / 2 - 50.0f}, 60, 0, startColor);
+    DrawTextEx(gs->cfonts.menu_font2, startText, getMenuOptionPosition(0), 60, 0, startColor);
 
     const char* tutorialText = (gs->menu_selection == 1) ? "> TUTORIAL <" : "  TUTORIAL ";
-    DrawTextEx(gs->cfonts.menu_font2, tutorialText, (Vector2){760.0f, s_height / 2 + 25.0f}, 60, 0, tutorial_color);
+    DrawTextEx(gs->cfonts.menu_font2, tutorialText, getMenuOptionPosition(1), 60, 0, tutorial_color);
 
     const char* creditsText = (gs->menu_selection == 2) ? "> CREDITS <" : "  CREDITS  ";
-    DrawTextEx(gs->cfonts.menu_font2, creditsText, (Vector2){820.0f, s_height / 2 + 100.0f}, 60, 0, creditsColor);
+    DrawTextEx(gs->cfonts.menu_font2, creditsText, getMenuOptionPosition(2), 60, 0, creditsColor);
 
     const char* exitText = (gs->menu_selection == 3) ? "> EXIT <" : "  EXIT  ";
-    DrawTextEx(gs->cfonts.menu_font2, exitText, (Vector2){880.0f, s_height / 2 + 175.0f}, 60, 0, exitColor);
+    DrawTextEx(gs->cfonts.menu_font2, exitText, getMenuOptionPosition(3), 60, 0, exitColor);
 }
 
 
@@ -999,8 +1017,8 @@ void drawNameEntry(GS* gs) {
 
     // cursor blink 
     if ((int)(GetTime() * 3) % 2 == 0 && gs->nameLetterCount < 24) {
-        int textW = (int)MeasureTextEx(GetFontDefault(), gs->playerName, 40, 0).x;
-        DrawText(" _", boxX + 75 + textW, boxY + 135, 40, BLACK);
+        int textW = (int)MeasureTextEx(gs->cfonts.menu_font3, gs->playerName, 40, 0).x;
+        DrawTextEx(gs->cfonts.menu_font3, "_", (Vector2){boxX + 75.0f + (float)textW, boxY + 135.0f}, 40, 0, BLACK);
     }
 
     // instruction text 
@@ -1088,6 +1106,17 @@ void drawScoreHUD(const GS* gs) {
 
     DrawTextEx(gs->cfonts.menu_font3, scoreText, (Vector2){scoreX + 3, scoreY + 3}, 40, 0, Fade(BLACK, 0.6f));
     DrawTextEx(gs->cfonts.menu_font3, scoreText, (Vector2){scoreX, scoreY}, 40, 0, WHITE);
+
+    if(gs->comboCount > 1 && gs->comboTimer > 0.0f){
+        const char* comboText = TextFormat("COMBO x%d  (%.2fx)", gs->comboCount, gs->comboMultiplier);
+        Vector2 cSize = MeasureTextEx(gs->cfonts.menu_font3, comboText, 26, 0);
+        float comboX = scoreX + textSize.x / 2.0f - cSize.x / 2.0f;
+        float comboY = scoreY + 44.0f;
+        float pulse = 1.0f + 0.06f * sinf((float)GetTime() * 12.0f);
+        Color cColor = (gs->comboCount >= 8) ? RED : (gs->comboCount >= 5) ? ORANGE : GOLD;
+        DrawTextEx(gs->cfonts.menu_font3, comboText, (Vector2){comboX + 2, comboY + 2}, 26.0f * pulse, 0, Fade(BLACK, 0.7f));
+        DrawTextEx(gs->cfonts.menu_font3, comboText, (Vector2){comboX, comboY}, 26.0f * pulse, 0, cColor);
+    }
 }
 
 

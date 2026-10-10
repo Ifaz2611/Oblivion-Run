@@ -1,4 +1,5 @@
 #include "sound.h"
+#include "player.h"
 #include <math.h>
 
 #define footstep_interval 0.35f  
@@ -89,10 +90,14 @@ void playerFootstepUpdate(GS* gs, float dt){
 
 
 void enemyFootstepUpdate(GS* gs, float dt){
+    float playerCenter = getPlayerCenterX(gs);
     for (int i = 0; i < max_enemy_num; i++) {
         Enemy* e = &gs->enemy[i];
         if (!e->isactive || e->state != walking_enemy) {
             gs->audio.enemyFootstepTimer[i] = 0.0f;
+            continue;
+        }
+        if (fabsf((e->position.x + e->width * 0.5f) - playerCenter) > s_width * 0.75f) {
             continue;
         }
         gs->audio.enemyFootstepTimer[i] += dt;

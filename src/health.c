@@ -148,8 +148,9 @@ void drawHealthDrops(GS* gs, tex* textures){
         HealthDrop* d = &gs->healthDrops[i];
         if(!d->active) continue;
 
-        Rectangle source = {0, 0, textures->health_item.width, textures->health_item.height};
-        float floatOffset = 3.0f*sinf(GetTime()*6.0f)*8.0f; 
+        Texture2D dropTex = textures->enemy_health_drop.id != 0 ? textures->enemy_health_drop : textures->health_item;
+        Rectangle source = {0, 0, (float)dropTex.width, (float)dropTex.height};
+        float floatOffset = sinf((float)GetTime() * 4.0f) * 6.0f; 
 
         Rectangle dest = {
             .x = d->rect.x,
@@ -157,6 +158,6 @@ void drawHealthDrops(GS* gs, tex* textures){
             .width = d->rect.width,
             .height = d->rect.height
         };
-        DrawTexturePro(textures->health_item, source, dest, (Vector2){0,0}, 0.0f, WHITE);
+        DrawTexturePro(dropTex, source, dest, (Vector2){0,0}, 0.0f, WHITE);
     }
 }

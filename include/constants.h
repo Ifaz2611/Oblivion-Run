@@ -147,6 +147,14 @@
 // gamepad (controller) tuning
 #define GAMEPAD_DEADZONE 0.3f
 
+// advanced platformer feel & combo mechanics
+#define COYOTE_TIME_DURATION      0.12f
+#define JUMP_BUFFER_DURATION      0.14f
+#define COMBO_TIMEOUT_DURATION    2.5f
+#define MAX_DASH_GHOSTS           8
+#define DASH_GHOST_SPAWN_INTERVAL 0.05f
+#define DASH_GHOST_FADE_SPEED     3.0f
+
 // second enemy type (no new structs — parametrized via spawnEnemy type id)
 #define ENEMY_TYPE_NORMAL 0
 #define ENEMY_TYPE_BRUTE  1

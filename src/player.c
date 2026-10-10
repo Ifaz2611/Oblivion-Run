@@ -204,8 +204,37 @@ void drawTouchControls(GS* gs){
     }
 }
 
+void updateDashGhosts(GS* gs, float dt){
+    for(int i = 0; i < MAX_DASH_GHOSTS; i++){
+        if(!gs->dashGhosts[i].active) continue;
+        gs->dashGhosts[i].alpha -= DASH_GHOST_FADE_SPEED * dt;
+        if(gs->dashGhosts[i].alpha <= 0.0f){
+            gs->dashGhosts[i].alpha = 0.0f;
+            gs->dashGhosts[i].active = false;
+        }
+    }
+}
+
+void drawDashGhosts(GS* gs){
+    Texture2D tex = gs->player_animations[player_dash].tex;
+    for(int i = 0; i < MAX_DASH_GHOSTS; i++){
+        if(!gs->dashGhosts[i].active) continue;
+        DashGhost* g = &gs->dashGhosts[i];
+        Rectangle dest = {
+            .x = g->position.x,
+            .y = g->position.y,
+            .width = g->source.width * SPRITE_SCALE * 1.6f,
+            .height = g->source.height * SPRITE_SCALE * 1.6f
+        };
+        Rectangle src = g->source;
+        if(g->facing_left) src.width = -src.width;
+        Color tint = Fade(SKYBLUE, g->alpha * 0.60f);
+        DrawTexturePro(tex, src, dest, (Vector2){0,0}, 0.0f, tint);
+    }
+}
+
 void playerDashUpdate(GS* gs,float dt){
-    if(gs->current_player_state>dashing_player) return;
+    if(gs->player.isDead || gs->current_player_state>dashing_player) return;
     Player* a = &gs->player;
 
     if(a->dashcooldowntimer>0) a->dashcooldowntimer-=dt;
@@ -213,13 +242,35 @@ void playerDashUpdate(GS* gs,float dt){
     if(dashPressedNow(gs) && !a->isdashing && a->dashcooldowntimer<=0 && a->isgrounded){
         a->isdashing = true;
         PlaySound(gs->audio.dash);
-        a->dashcooldowntimer =dash_cooldowntimer;
+        a->dashcooldowntimer = dash_cooldowntimer;
         a->dashduration = dash_duration;
         a->velocity.x = (a->facing_left)? -dash_speed : dash_speed;
         a->velocity.y = -350.0f;
+        gs->dashGhostSpawnTimer = 0.0f;
     }
     if(a->isdashing && a->dashduration>=0){
         a->dashduration-=dt;
+
+        gs->dashGhostSpawnTimer += dt;
+        if(gs->dashGhostSpawnTimer >= DASH_GHOST_SPAWN_INTERVAL){
+            gs->dashGhostSpawnTimer = 0.0f;
+            anim* dashAnim = &gs->player_animations[player_dash];
+            for(int gi = 0; gi < MAX_DASH_GHOSTS; gi++){
+                if(!gs->dashGhosts[gi].active){
+                    gs->dashGhosts[gi].active = true;
+                    gs->dashGhosts[gi].position = a->position;
+                    gs->dashGhosts[gi].source = (Rectangle){
+                        (float)(dashAnim->currentframe * dashAnim->frameWidth),
+                        0.0f,
+                        (float)dashAnim->frameWidth,
+                        (float)dashAnim->frameHeight
+                    };
+                    gs->dashGhosts[gi].alpha = 0.75f;
+                    gs->dashGhosts[gi].facing_left = a->facing_left;
+                    break;
+                }
+            }
+        }
         
         if(a->dashduration<=0){
             a->isdashing = false;
@@ -236,7 +287,7 @@ Rectangle getplayerhitbox(GS* gs){
 }
 
 void hitting(GS* gs,float dt){
-    if(gs->current_player_state>attacking_player) return;
+    if(gs->player.isDead || gs->current_player_state>attacking_player) return;
 
     Player* p = &gs->player;
     (void)dt;
@@ -319,10 +370,26 @@ void playerMovement(GS* gs,anim* anim,float dt){
     }
 
 
-    if(jumpPressedNow(gs) && gs->player.isgrounded){
+    // coyote time update
+    if(gs->player.isgrounded){
+        gs->player.coyoteTimer = COYOTE_TIME_DURATION;
+    }else if(gs->player.coyoteTimer > 0.0f){
+        gs->player.coyoteTimer -= dt;
+    }
+
+    // jump buffer update
+    if(jumpPressedNow(gs)){
+        gs->player.jumpBufferTimer = JUMP_BUFFER_DURATION;
+    }else if(gs->player.jumpBufferTimer > 0.0f){
+        gs->player.jumpBufferTimer -= dt;
+    }
+
+    if(gs->player.jumpBufferTimer > 0.0f && (gs->player.isgrounded || gs->player.coyoteTimer > 0.0f)){
         PlaySound(gs->audio.jump);
         gs->player.velocity.y = -jumpSpeed;
         gs->player.isgrounded = false; 
+        gs->player.coyoteTimer = 0.0f;
+        gs->player.jumpBufferTimer = 0.0f;
     }
     gs->player.position = (Vector2) Vector2Add(gs->player.position,Vector2Scale(gs->player.velocity,dt));
 
@@ -385,6 +452,7 @@ void checkCeilingCollision(GS* gs){
     Rectangle headRect = getHeadCheckRec(gs);
     for(int i=0;i<MaxChunkNum;i++){
         Rectangle chunk = gs->gchunk[i].groundChunkRect;
+        if(chunk.width <= 0.0f) continue;
         if(CheckCollisionRecs(headRect, chunk)){
             gs->player.velocity.y = 0;
             gs->player.position.y = chunk.y + chunk.height - gs->player.collisionOffset.y;

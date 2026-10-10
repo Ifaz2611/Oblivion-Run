@@ -258,7 +258,9 @@ void updateEnemyInvultimer(GS* gs,float dt){
 }
 
 static void awardKillScore(GS* gs, Enemy* e){
-    int amount = (e->scoreValue > 0) ? e->scoreValue : SCORE_PER_KILL_NORMAL;
+    int base = (e->scoreValue > 0) ? e->scoreValue : SCORE_PER_KILL_NORMAL;
+    float mult = (gs->comboMultiplier >= 1.0f) ? gs->comboMultiplier : 1.0f;
+    int amount = (int)(base * mult);
     gs->bonusScore += amount;
     for(int t = 0; t < 10; t++){
         if(!gs->floatTexts[t].active){
@@ -266,8 +268,13 @@ static void awardKillScore(GS* gs, Enemy* e){
             gs->floatTexts[t].position = (Vector2){e->position.x, e->position.y - 30.0f};
             gs->floatTexts[t].timer = 1.5f;
             gs->floatTexts[t].maxTime = 1.5f;
-            snprintf(gs->floatTexts[t].text, sizeof(gs->floatTexts[t].text), "+%d", amount);
-            gs->floatTexts[t].color = (e->type == ENEMY_TYPE_BRUTE) ? ORANGE : GOLD;
+            if(gs->comboCount > 1){
+                snprintf(gs->floatTexts[t].text, sizeof(gs->floatTexts[t].text), "+%d (x%d)", amount, gs->comboCount);
+                gs->floatTexts[t].color = YELLOW;
+            }else{
+                snprintf(gs->floatTexts[t].text, sizeof(gs->floatTexts[t].text), "+%d", amount);
+                gs->floatTexts[t].color = (e->type == ENEMY_TYPE_BRUTE) ? ORANGE : GOLD;
+            }
             break;
         }
     }
@@ -325,11 +332,15 @@ void move_pgas(GS* gs,float dt){
 }
 
 Rectangle getPgasRect(GS* gs){
+    float left = gs->camera.target.x - gs->camera.offset.x - 400.0f;
+    float edgeX = gs->pgas.position.x + gs->pgas.pgas_anim[0].width/2.0f;
+    float w = edgeX - left;
+    if(w < 0.0f) w = 0.0f;
     return (Rectangle){
-        .x = gs->pgas.position.x,
-        .y = gs->pgas.position.y,
-        .width = gs->pgas.pgas_anim[0].width,
-        .height = gs->pgas.pgas_anim[0].height
+        .x = left,
+        .y = 0.0f,
+        .width = w,
+        .height = (float)s_height
     };
 }
 
@@ -351,17 +362,21 @@ void drawPgasSprite(GS* gs){
 }
 
 void DamageFromSpikes(GS* gs,float dt){
-
-    gs->spike_cooldown-=dt;
-    if(gs->spike_cooldown<0) gs->spike_cooldown = 0;
+    if(gs->spike_cooldown > 0.0f){
+        gs->spike_cooldown -= dt;
+        if(gs->spike_cooldown < 0.0f) gs->spike_cooldown = 0.0f;
+    }
+    Rectangle playerRect = getPlayerRect(gs);
     for(int i = 0; i < max_spikes; i++){
         if(!gs->spikes[i].isactive) continue;
 
-        if(CheckCollisionRecs(getPlayerRect(gs), gs->spikes[i].rect)){
-            if(gs->spike_cooldown==0) damagePlayer(gs, diffSpikeDmg(gs->difficulty));
-            gs->spike_cooldown = spikecooldown;
-        }   
-
+        if(CheckCollisionRecs(playerRect, gs->spikes[i].rect)){
+            if(gs->spike_cooldown <= 0.0f){
+                damagePlayer(gs, diffSpikeDmg(gs->difficulty));
+                gs->spike_cooldown = spikecooldown;
+            }
+            break;
+        }
     }
 }
 static int pickAutoEnemyType(GS* gs){
